@@ -40,28 +40,35 @@ Class.Analysis.Data <- R6Class("Class.Analysis.Data",
     
     
     #builds a stat dataframe from a list of chemical objects
-    buildBasicStatsTable = function( chemicals ){
-      
+    buildBasicStatsTable = function( chemicals, analyse_background = TRUE ){
+
+	  
 	  private$ttl_chem = length(chemicals);
 	  
 	  
       basic_stat_tbl <- tribble(~casn, ~aeid, ~assay_component_endpoint_name, ~intended_target_family,
-                                ~intended_target_family_sub, ~ac50, ~ac_cutoff, ~ac_top, ~name, ~above_cutoff, ~cytotoxicity_um, ~cytotoxic, ~hitc, ~gene_name);
+                                ~intended_target_family_sub, ~ac50, ~ac_cutoff, ~ac_top, ~name, ~above_cutoff, ~cytotoxicity_um, ~cytotoxic, ~hitc, ~gene_name, ~gene_symbol);
       for (chem in chemicals){
         if (length(chem$assay_info$aeid)> 0){
           assaydata <- select(chem$assay_info, casn, aeid, assay_component_endpoint_name, 
-                              intended_target_family, intended_target_family_sub, ac50, ac_cutoff, ac_top, gene_name);
-        
-          assaydata <- add_column(assaydata, name = chem$chem_info$name);
-          assaydata <- add_column(assaydata, cytotoxicity_um = chem$chem_info$cytotoxicity_um);
-          ab_c <- ifelse(assaydata$ac50 > assaydata$ac_cutoff, "Y", "N");
-		  ab_cito <- ifelse(10^assaydata$ac50 > chem$chem_info$cytotoxicity_um, "Y", "N");
-          assaydata <- add_column(assaydata, above_cutoff = ab_c, cytotoxic = ab_cito);
-          basic_stat_tbl <- bind_rows(basic_stat_tbl, assaydata);
+                              intended_target_family, intended_target_family_sub, ac50, ac_cutoff, ac_top, gene_name,gene_symbol, hitc) %>% filter(hitc == 1); #this is the only spot we need to filter on. for stats. unless....
 		  
+		  if(!analyse_background){
+			assaydata  <-  subset(assaydata, intended_target_family != "background measurement");
+		  }
+		  if(nrow(assaydata)>0){			
+			  assaydata <- add_column(assaydata, name = chem$chem_info$name);
+			  assaydata <- add_column(assaydata, cytotoxicity_um = chem$chem_info$cytotoxicity_um);
+			  ab_c <- ifelse(assaydata$ac50 > assaydata$ac_cutoff, "Y", "N");
+			  ab_cito <- ifelse(10^assaydata$ac50 > chem$chem_info$cytotoxicity_um, "Y", "N");
+			  assaydata <- add_column(assaydata, above_cutoff = ab_c, cytotoxic = ab_cito);
+			  basic_stat_tbl <- bind_rows(basic_stat_tbl, assaydata);
+		  }else{
+			logdebug(paste0("No assay information found for ", chem$chem_info$casn));
+			self$addHitlessChemInfo(chem$chem_info);
+		  }
         } else {
           logdebug(paste0("No assay information found for ", chem$chem_info$casn));
-
           self$addHitlessChemInfo(chem$chem_info);
         }
 		
@@ -141,7 +148,7 @@ Class.Analysis.Data <- R6Class("Class.Analysis.Data",
     computeScalarTop = function (){
       scalar_top_tbl <- select(private$basic_stat_tbl, casn, name, aeid, 
                                assay_component_endpoint_name, ac50, ac_cutoff, 
-                               ac_top, above_cutoff,cytotoxic, gene_name, contains("oed"));
+                               ac_top, above_cutoff,cytotoxic, gene_name, gene_symbol,   contains("oed"));
       scalar_top <- scalar_top_tbl$ac_top / 10^(scalar_top_tbl$ac50); #ac_top needs further verification, as per documentation it is not log10, but looking at data who knows
       #Gabriel
       scalar_top_tbl <- add_column(scalar_top_tbl, scalar_top = scalar_top);

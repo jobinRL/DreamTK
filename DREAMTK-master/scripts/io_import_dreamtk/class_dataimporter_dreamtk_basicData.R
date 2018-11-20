@@ -23,6 +23,8 @@ Class.DataImporter.dreamtk.basicData <- R6Class("Class.DataImporter.dreamtk.basi
 		physiology_data = NULL,
 		assay_info = NULL,
 		
+		cpdat_data = NULL,
+		shedsinfo_data = NULL,
 		
 		source = NULL 
 	
@@ -237,9 +239,65 @@ Class.DataImporter.dreamtk.basicData <- R6Class("Class.DataImporter.dreamtk.basi
 															table = table,
 															tablevars = tablevars);
 				}
+				private$ac50_data$aeid <- as.numeric(private$ac50_data$aeid);
 				private$assay_info <- inner_join(private$ac50_data, private$assay_data, by = "aeid");
 			}
 			invisible(self);
+		},
+		loadCPDatData = function ( chemicals = "*" ) {
+			
+			
+			if (is.null(chemicals)){
+				e <- "dataimporter.dreamtk.rdata$loadCPDatData(): Invalid filter list given. Use '*' to get all values.";
+				logerror( e );
+				stop(e);
+			}
+		
+
+			if ( is.null(private$cpdat_data)){
+				loginfo("Importing dreamtk v1.0 CPDat data...");
+				table <- Class.DataImporter.dreamtk.tableinfo$cpdattablename;
+				tablevars <- Class.DataImporter.dreamtk.tableinfo$cpdattablevars;
+				if (is.character(private$source)){
+					private$cpdat_data <- private$loadDataFromRData ( file.path = private$source, 
+																		table = table, 
+																		tablevars = tablevars, 
+																		filter_by = "casn", 
+																		filter_val = "*" );
+				}else{
+					private$cpdat_data <- private$loadDataFromMySQLTable( dreamtk.db=private$source,
+																			filter_by = "casn",
+																			filter_val = "*",
+																			dbName = "dream_tk", 
+																			table = table,
+																			tablevars = tablevars);
+				}	
+			}	
+				invisible(self);
+		},
+		
+		loadShedData = function () {
+		
+			if ( is.null(private$shedsinfo_data)){
+				loginfo("Importing dreamtk v1.0 Sheds data...");
+				table <- Class.DataImporter.dreamtk.tableinfo$shedsinfotablename;
+				tablevars <- Class.DataImporter.dreamtk.tableinfo$shedsinfotablevars;
+				if (is.character(private$source)){
+					private$shedsinfo_data <- private$loadDataFromRData ( file.path = private$source, 
+																		table = table, 
+																		tablevars = tablevars, 
+																		filter_by = "*", 
+																		filter_val = "*" );
+				}else{
+					private$shedsinfo_data <- private$loadDataFromMySQLTable( dreamtk.db=private$source,
+																			filter_by = "*",
+																			filter_val = "*",
+																			dbName = "dream_tk", 
+																			table = table,
+																			tablevars = tablevars);
+				}	
+			}	
+				invisible(self);
 		},
 
 		getChemicalData = function () {
@@ -302,6 +360,19 @@ Class.DataImporter.dreamtk.basicData <- R6Class("Class.DataImporter.dreamtk.basi
 			imported_data <- filter(private$assay_info, casn %in% private$a_chemicals );
 			return( imported_data );
 		  }
+		},
+		
+		getCpdatInfo = function () {
+		  if(any("*" %in% private$chemicals)){
+			return( private$cpdat_data );
+		  }else{
+			imported_data <- filter(private$cpdat_data, casn %in% private$a_chemicals );
+			return( imported_data );
+		  }
+		},
+		
+		getShedsInfo = function () {
+			return (private$shedsinfo_data);
 		},
 		
 		#convert chem name list to casn, unknown compounds get casn = *name
