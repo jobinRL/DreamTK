@@ -25,12 +25,13 @@ sidebar <- dashboardSidebar(
   # The dynamically-generated user panel
   uiOutput("userpanel"),
   
-  div(id = "sidebardiv",
+  div(id = "sidebardiv", 
   sidebarMenu(id = "sidebar",
     menuItemAddId( menuItem("Home", tabName = "hometab", icon = icon("home")), id="li_home" ),
     menuItemAddId( menuItem("Search", tabName = "searchtab", icon = icon("search")), id="li_search" ),
     menuItemAddId( menuItem("Analysis", tabName = "analysistab", icon = icon("pie-chart")), id="li_analysis" ),
     menuItemAddId( menuItem("MFA", tabName = "mfatab", icon = icon("line-chart")), id="li_mfa" ),
+	menuItemAddId( menuItem("BER Analysis", tabName = "bertab", icon = icon("user", lib = "glyphicon")), id="li_ber" ),
     menuItemAddId( menuItem("Save/Load", tabName = "savetab", icon = icon("floppy-o")), id="li_save" ),
     menuItemAddId( menuItem("Help", icon = icon("question-circle"), startExpanded = FALSE,
                             actionLink(inputId = "link_help_overview", label = "Interface Help"),
@@ -68,7 +69,7 @@ body <- dashboardBody(
                   h5("Welcome to DreamTK, an R application which facilitates toxicokinetic analysis of a variety of chemicals."),
                   h5("ToxCast Pipeline for High-Throughput Screening Data (tcpl v2.0) (Filer et al., 2016, US EPA) is the  primary chemical and assay database used by this application."),
                   h5("High-Throughput Toxicokinetics (httk v1.8) (Pearce et al., 2018) database is used to obtain the necessary toxicokinetic constants."),
-				  h5("Only Assays that hit their cutoffs are considered and shown in the data.")
+				  h5("Only Assays that hit their cutoffs are considered for analysis.")
               ))
             ),
             fluidRow(
@@ -148,7 +149,7 @@ body <- dashboardBody(
                                                                        "<blockquote style = 'font-size:14px; border-left: 10px solid #fff;'><strong>casn:</strong> CAS Registry Number",
                                                                        "<br><strong>name:</strong> Chemical name",
                                                                        "<br><strong>cytotoxicity_um:</strong> Cytotoxic concentration (<strong>Units:</strong> uM)",
-                                                                       "<br><strong>cytotoxic:</strong> is chemical considered cytotoxic at above concentration? Y/N flag",
+                                                                       "<br><strong>cytotoxic:</strong> is the chemical considered cytotoxic at above concentration? Y/N flag",
                                                                        "<br><strong>mw:</strong> Molecular weight (<strong>Units:</strong> g/mol)",
                                                                        "<br><strong>human_funbound_plasma:</strong> Unbound fraction of chemical in blood (<strong>Units:</strong> none)",
                                                                        "<br><strong>human_clint:</strong> Intrinsic invitro hepatic clearance (<strong>Units:</strong> uL/min/10<sup>6</sup> cells)",
@@ -170,12 +171,26 @@ body <- dashboardBody(
               
               box(status = "primary", title = "Select and examine chemicals and chemical assays", collapsible = TRUE, width = 12, id = "chemlistbox",
                 fluidRow(
+					column(2,
+					#if for some reason we change the colours primary won't work and we will have to figure a way to put colours in those switchtes. Style is not useable. https://rdrr.io/cran/shinyWidgets/src/R/input-pretty.R Gabriel
+					prettySwitch(inputId = "select_hit", label = "Only Active Assays", value = TRUE, status = "primary",
+									  fill = TRUE, bigger = TRUE, inline = TRUE,
+									  width = NULL)
+					),
+					column(2,
+					prettySwitch(inputId = "select_background", label = "Include Background Measurements", value = TRUE, status = "primary",
+									  fill = TRUE, bigger = TRUE, inline = TRUE,
+									  width = NULL)
+					)
+					
+				),
+				fluidRow(
                   column(12,
                          div(
                            style = "display: inline-block;vertical-align:bottom; width: 33%;",
                            selectInput(inputId = "select_chemical", label = "Searched chemical list", selectize = FALSE, size = 10,
                                        choices = NULL )
-                         ),
+                         ),	
                          div(
                            style = "display: inline-block;vertical-align:bottom; width: 33%;",
                            selectInput(inputId = "select_assay", label = "Chemical assay list", selectize = FALSE, size = 10,
@@ -215,7 +230,7 @@ body <- dashboardBody(
                     downloadButton(outputId = "button_saveassays", label = "Assays CSV", icon = icon("table"), style="padding-left:10px; padding-right:10px; width:95%; white-space: normal;"),
                     bsTooltip(id="button_saveassays", "Save assay information for the selected chemical as a CSV file", placement = "bottom", trigger = "hover", options = NULL)
                   )
-                )
+                )							   
               )
               
           ),
@@ -251,7 +266,10 @@ body <- dashboardBody(
                                   actionButton(inputId = "button_stats_deselectall", label = "Deselect All", icon = icon("ban"), style="padding-left:10px; padding-right:10px; width:100%; white-space: normal;overflow:hidden")
                            )
                          )
-                       )
+                       ),
+					   prettySwitch(inputId = "analyse_background", label = "Include Background Measurements", value = TRUE, status = "primary",
+									  fill = TRUE, bigger = TRUE, inline = TRUE,
+									  width = NULL)
                 ),
                 column(6,
                        wellPanel(id = "stats_optionscontrol",
@@ -323,6 +341,53 @@ body <- dashboardBody(
               )
             )
     ),
+	
+	tabItem(tabName = "bertab",
+            h3("Biological Exposure Rate Analysis"),
+            #chemical selection panel
+            fluidRow(
+              box(status = "primary", title = "Select chemicals and desired analysis", collapsible = TRUE, width = 6,
+                  wellPanel(id = "ber_selectcontrol",
+                    selectizeInput(inputId = "select_chemical_ber", label = "Selected chemicals", 
+                                   options = list(placeholder = "Click me to select chemicals",
+                                                  maxOptions = 10000, loadThrottle = 800,
+                                                  delimiter = " ", hideSelected = TRUE,
+                                                  plugins = list("restore_on_backspace", "remove_button")),
+                                   multiple = TRUE, choices = NULL),
+                    fluidRow(
+                      column(3,
+                             actionButton(inputId = "button_ber_selectall", label = "Select All", icon = icon("mouse-pointer"), style="padding-left:10px; padding-right:10px; width:100%; white-space: normal;")
+                      ),
+                      column(3,
+                             actionButton(inputId = "button_ber_deselectall", label = "Deselect All", icon = icon("ban"), style="padding-left:10px; padding-right:10px; width:100%; white-space: normal;")
+                      ),
+                      column(3,
+                             actionButton(inputId = "button_ber_run", label = "Run BER analysis", icon = icon("bar-chart"), style="padding-left:10px; padding-right:10px; width:100%; white-space: normal;")
+                      ),
+                      column(1,
+                             busyIndicator(text="Working...")
+                      )
+                    )
+                  )
+				  
+              ),
+			  box(status = "primary", title = "Extra Information and Assumptions", collapsible = TRUE, width = 6, height = 250,
+					p("The calculations are based on the", a( href = "https://pubs.acs.org/doi/10.1021/es502513w", "SHEDS-HT", style = "color: blue;", target = "_blank", rel = "noopener noreferrer"), " exposure model."),
+					h4("Units"),
+					tags$ul(tags$li("All measurements shown are in ug.")),
+					h4("Assumptions"),
+					tags$ul(tags$li("Physical activity index  =  1.75"),
+						tags$li("Basal Alveolar Ventilation Rate  =  15.7 m",tags$sup("3"),"/day"),
+						tags$li("Vapor pressure  =  0.876 Pa")
+						)
+					)
+            ),
+            fluidRow(
+              box(status = "primary", title = "Analysis results", collapsible = TRUE, width = 12,
+                  uiOutput(outputId = "ui_ber")
+              )
+            )
+    ),
     
     tabItem(tabName = "savetab",
             h3("Save/Load workspace"),
@@ -357,10 +422,10 @@ body <- dashboardBody(
 						  tags$li("The chemicals used for the analysis and the analysis."),
 				          tags$li("A screenshot of what the bug in action looks like."),
 				          tags$li("A short description of what the desired output or result is.")
-              )
+						)
 				  )
-            )
-    )
+				)	
+			)
 	)
   )
 );

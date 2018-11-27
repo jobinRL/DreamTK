@@ -25,7 +25,7 @@ sidebar <- dashboardSidebar(
   # The dynamically-generated user panel
   uiOutput("userpanel"),
   
-  div(id = "sidebardiv",
+  div(id = "sidebardiv", 
   sidebarMenu(id = "sidebar",
     menuItemAddId( menuItem("Home", tabName = "hometab", icon = icon("home")), id="li_home" ),
     menuItemAddId( menuItem("Search", tabName = "searchtab", icon = icon("search")), id="li_search" ),
@@ -69,7 +69,7 @@ body <- dashboardBody(
                   h5("Welcome to DreamTK, an R application which facilitates toxicokinetic analysis of a variety of chemicals."),
                   h5("ToxCast Pipeline for High-Throughput Screening Data (tcpl v2.0) (Filer et al., 2016, US EPA) is the  primary chemical and assay database used by this application."),
                   h5("High-Throughput Toxicokinetics (httk v1.8) (Pearce et al., 2018) database is used to obtain the necessary toxicokinetic constants."),
-				  h5("Only Assays that hit their cutoffs are considered and shown in the data.")
+				  h5("Only Assays that hit their cutoffs are considered for analysis.")
               ))
             ),
             fluidRow(
@@ -369,7 +369,18 @@ body <- dashboardBody(
                       )
                     )
                   )
-              )
+				  
+              ),
+			  box(status = "primary", title = "Extra Information and Assumptions", collapsible = TRUE, width = 6, height = 250,
+					p("The calculations are based on the", a( href = "https://pubs.acs.org/doi/10.1021/es502513w", "SHEDS-HT", style = "color: blue;", target = "_blank", rel = "noopener noreferrer"), " exposure model."),
+					h4("Units"),
+					tags$ul(tags$li("All measurements shown are in ug.")),
+					h4("Assumptions"),
+					tags$ul(tags$li("Physical activity index  =  1.75"),
+						tags$li("Basal Alveolar Ventilation Rate  =  15.7 m",tags$sup("3"),"/day"),
+						tags$li("Vapor pressure  =  0.876 Pa")
+						)
+					)
             ),
             fluidRow(
               box(status = "primary", title = "Analysis results", collapsible = TRUE, width = 12,

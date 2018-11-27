@@ -5,7 +5,7 @@
 # Version number and revision
 app.version.major <- "0";
 app.version.minor <- "7";
-app.version.revision <- "5";
+app.version.revision <- "9";
 
 #num columns 
 num_plot_cols <- 1;
@@ -1063,34 +1063,76 @@ createMFAUI = function( input, output, session,
   
 #BER tab - create BER output UI
 createBERUI = function( input, output, session, BERAnalysis, id ){
-  
+ 
   insertUI(
     selector = "#ui_ber",
     where = "beforeEnd",
 	ui = fluidRow(id = id,
 						if( BERAnalysis$BERData$calcBERStatsDataExists()){
-								box(status = "primary", title = "BER Analysis Table", collapsible = TRUE, width = 12,
-							column(12, offset = 0,
-								wellPanel(
-									DT::dataTableOutput(outputId = "table_stats_BER")
+							box(status = "primary", title = "BER Analysis Table", collapsible = TRUE, width = 12,
+								
+									
+								column(12, offset = 0,
+									wellPanel(
+										DT::dataTableOutput(outputId = "table_stats_BER")
+										)
+									)
 								)
-							)
-						)
 						}else{
-							box(status = "primary", title = "OED vs ScalarTop Analysis Plot", collapsible = TRUE, width = 12,
+							box(status = "primary", title = "BER Analysis Table", collapsible = TRUE, width = 12,
 								column(12, offset = 0,
 									h3("No BER Data available for the chemical(s). No Table to plot.", 
 									id = "table_stats_BER", style = "color:red")
 								)
 							)
+						},
+						br(),
+						if( BERAnalysis$BERData$calcBERStatsDataExists()){
+							box(status = "primary", title = "BER Agregated Analysis Table", collapsible = TRUE, width = 12,
+								dropdownButton(
+									  tags$h3("About plot"),
+									  HTML( 
+										str_c( "<p>Oral BER of a product use category for a chemical is the summation of the direct incidental ingestion, direct aerosol ingestion and direct vapor ingestion.</p>",
+												"<p><strong>Mean:</strong> This value is calculating by getting the average of all the product categories of each chemical.</p>",
+												"<p><strong>Percentile Value:</strong> The actual Oral BER value closest to the percentile value being calculated.</p>"
+										)
+									  ),
+									  circle = TRUE, status = "danger", icon = icon("question-circle"), width = "300px",
+									  tooltip = NULL
+								),
+								br(),
+								
+								column(12, offset = 0,
+									wellPanel(
+										DT::dataTableOutput(outputId = "table_stats_mean_BER")
+										)
+									)
+								)
+						}else{
+							box(status = "primary", title = "BER Agregated Analysis Table", collapsible = TRUE, width = 12,
+								column(12, offset = 0,
+									h3("No BER Data available for the chemical(s). No Table to plot.", 
+									id = "table_stats_mean_BER", style = "color:red")
+								)
+							)
+							
 						}
 						
 		)
 	);
-	
-  
-  output$table_stats_BER <- DT::renderDataTable(server = FALSE,  {
+
+	output$table_stats_BER <- DT::renderDataTable(server = FALSE,  {
 		datatable( BERAnalysis$BERData$getCalcBERStatsTable(), 
+					selection="none", filter = "bottom", extensions = "Buttons",
+					options=list(buttons = c('copy', 'csv', 'excel'), dom = "Blfrtip",
+					pageLength = 10, searchHighlight = TRUE, lengthMenu = c(10, 20, 50, 100),
+					scrollX=TRUE, scrollCollapse=TRUE), rownames= FALSE) 
+
+		}
+	);
+	
+	output$table_stats_mean_BER <- DT::renderDataTable(server = FALSE,  {
+		datatable( BERAnalysis$getMeanBERTable(), 
 					selection="none", filter = "bottom", extensions = "Buttons",
 					options=list(buttons = c('copy', 'csv', 'excel'), dom = "Blfrtip",
 					pageLength = 10, searchHighlight = TRUE, lengthMenu = c(10, 20, 50, 100),

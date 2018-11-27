@@ -1,0 +1,2 @@
+rsconnect::setAccountInfo(name='jobin', token='4C0AD2645FA1190E7EBFD5EA3C219FF8', secret='MCDEA0JUoFC5noFEcOrSaEO/j2PtbWX6W9kI0Zws')
+rsconnect::deployApp("C:/Users/SQL-server/Documents/Gabriel/DreamTK-26092018/DreamTK2/DREAMTK-upload", appName = "dreamtk");

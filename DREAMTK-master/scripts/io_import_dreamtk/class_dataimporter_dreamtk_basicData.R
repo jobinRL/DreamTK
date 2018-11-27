@@ -262,11 +262,11 @@ Class.DataImporter.dreamtk.basicData <- R6Class("Class.DataImporter.dreamtk.basi
 					private$cpdat_data <- private$loadDataFromRData ( file.path = private$source, 
 																		table = table, 
 																		tablevars = tablevars, 
-																		filter_by = "casn", 
+																		filter_by = "*", 
 																		filter_val = "*" );
 				}else{
 					private$cpdat_data <- private$loadDataFromMySQLTable( dreamtk.db=private$source,
-																			filter_by = "casn",
+																			filter_by = "*",
 																			filter_val = "*",
 																			dbName = "dream_tk", 
 																			table = table,
@@ -363,12 +363,7 @@ Class.DataImporter.dreamtk.basicData <- R6Class("Class.DataImporter.dreamtk.basi
 		},
 		
 		getCpdatInfo = function () {
-		  if(any("*" %in% private$chemicals)){
 			return( private$cpdat_data );
-		  }else{
-			imported_data <- filter(private$cpdat_data, casn %in% private$a_chemicals );
-			return( imported_data );
-		  }
 		},
 		
 		getShedsInfo = function () {

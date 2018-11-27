@@ -416,7 +416,7 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
       chemical_casn_list <- unique(basic_table[["casn"]]);
       for (chemical_casn in chemical_casn_list){
            
-        dfa <- filter(basic_table, casn == chemical_casn,above_cutoff == "Y", ac50 >= -2, ac50 <= 1000) %>% drop_na(ac50);
+        dfa <- filter(basic_table, casn == chemical_casn,above_cutoff == "Y", ac50 >= -2, ac50 <= 1000, cytotoxicity_um > 0.01) %>% drop_na(ac50);
           
         dfa$ac50 <- 10^(dfa$ac50); #ac50 is originally in log10
         avg_ac50 <- mean(dfa$ac50, na.rm = TRUE)
@@ -430,8 +430,6 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
 		val_ac = (log10(avg_ac50) + 2) * 0.8;
 		val_ct = (log10(avg_cyto) + 2) * 0.8;
 		val_tp = (log10(avg_top) + 2) * 0.8;
-
-		
         #val_tp = min(max(-log10(avg_top/range_tp),0),4);
 		#val_tp = -log10(avg_top/range_tp);
         #add the taget family counts and ac50 table to the list, keyed by target family; then sort by re_avg_ac50
@@ -444,7 +442,7 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
 				self$basicData$addHitlessChemInfo(chemical);
 			}
 	  }
-      return ( private$target_family_ac_list_tox );
+      return ( private$target_family_ac_list_tox);
     },
     
     #toxPi tables for plotting
@@ -683,18 +681,7 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
            #  create mean of each row
 
           
-		   
-           
-     
-		  
-		   
-		#print(paste0("for Chemical", chem_casn, "we have:", val_ac,",",val_ct,",",val_tp));
-		#print(paste0("range_ac:",plotdata$range_ac));
-		#print(paste0("range_tp:",plotdata$range_tp));
-
-		#print(paste0("ac:",ac));
-		#print(paste0("ct:",ct));
-		#print(paste0("tp:",tp));
+          
 
 		   
 		   #val_ac <- min(max( -log10(1/plotdata$avg_ac50/plotdata$range_ac*10),0),4);

@@ -35,8 +35,6 @@ Class.Analysis.BERData <- R6Class("Class.Analysis.BERData",
     
     #builds a stat dataframe from a list of chemical objects
     buildBERStatsTable = function(BERData,sheds, chemlist, label_by){
-		
-		
 		if(label_by == "casn"){ 
 			private$BER_stat_tbl = filter(BERData, casn %in% chemlist);
         } else if (label_by == "name"){
@@ -44,7 +42,7 @@ Class.Analysis.BERData <- R6Class("Class.Analysis.BERData",
         }
 	
 		private$Sheds_stat_tbl  = filter(sheds, product_use_category %in% private$BER_stat_tbl$product_use_category);
-		
+
 		invisible (private$BER_stat_tbl);
     },
     
@@ -55,17 +53,17 @@ Class.Analysis.BERData <- R6Class("Class.Analysis.BERData",
     computeBER = function(){
       
 		  chemical_casn_list <- unique(private$BER_stat_tbl[["casn"]]);
-		  BER_tbl = tribble(~casn,~name,~product_use_category,~direct_dermal,~direct_ingestion,~direct_vapor,~direct_aeorosol,~indirect);
+		  BER_tbl = tribble(~casn,~name,~product_use_category,~direct_dermal,~direct_ingestion,~direct_vapor,~direct_aerosol);
+
 		  for (chemical_casn in chemical_casn_list){
 
-			
 			
 			
 			BER_Calc_tbl <- filter(private$BER_stat_tbl, casn == chemical_casn) %>% 
 			  select(casn, name, product_use_category, predicted_weight_fraction_mean );
 			  
-			BVA = 8.64;
-			PAI = 1;
+			BVA = 15.7; # 12.78? or 30.09600??? or 15.7????? or 17.36 if considering males???
+			PAI = 1.75;
 			vptreatedroomac = 0.876;
 			vevap = 5;
 			
@@ -78,8 +76,8 @@ Class.Analysis.BERData <- R6Class("Class.Analysis.BERData",
 				}else{
 					direct_dermal_val = 0;
 				}
-				#https://www.sciencedirect.com/topics/agricultural-and-biological-sciences/respiratory-minute-volume for 1 of the 2 vars. BVA = 8.64 m3/day
-				#for pai https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3958414/ ? idk what the pai is I'll just set to 1 for now.
+				#https://www.sciencedirect.com/topics/agricultural-and-biological-sciences/respiratory-minute-volume for 1 of the 2 vars. BVA = 8.64 m3/day McMurray
+				#for pai https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3958414/ ? idk what the pai is I'll just set to 1 for now. 1.75 according to Andy.
 				if(shedsrow$direct_inhalation_of_vapor == "1"){
 					cavap = (shedsrow$mass_per_use*puc_tbl$predicted_weight_fraction_mean) * vptreatedroomac/101325 * shedsrow$duration_of_direct_use * 1/vevap;
 					direct_vapor_val =  (shedsrow$frequency/365)*cavap*shedsrow$duration_of_direct_use/1440*BVA*PAI;
@@ -90,9 +88,9 @@ Class.Analysis.BERData <- R6Class("Class.Analysis.BERData",
 				if(shedsrow$direct_inhalation_of_aerosol == "1"){
 					fairb = 0.95; #to check.
 					caaer = (shedsrow$mass_per_use*puc_tbl$predicted_weight_fraction_mean) * 0.0625 * fairb;
-					direct_aeorosol_val = (shedsrow$frequency/365)*caaer*shedsrow$duration_of_direct_use/1440*BVA*PAI;
+					direct_aerosol_val = (shedsrow$frequency/365)*caaer*shedsrow$duration_of_direct_use/1440*BVA*PAI;
 				}else{
-					direct_aeorosol_val = 0
+					direct_aerosol_val = 0
 				}
 				
 				if(shedsrow$direct_incidental_ingestion == "1"){
@@ -101,24 +99,14 @@ Class.Analysis.BERData <- R6Class("Class.Analysis.BERData",
 					direct_ingestion_val = 0;
 				}
 				
-				if(shedsrow$indirect == "1"){
-					cai = 1; #how to calculate this;
-					Einhal = (cai*shedsrow$duration_of_direct_use/1440)*BVA*PAI;
-					csi = 1; #how to calculate this;
-					Eiderm = (csi* 0.5)
-					indirect_val = Einhal + Eiderm;
-				}else{
-					indirect_val = 0
-				}
 
 				BER_tbl <- add_row(BER_tbl, casn = chemical_casn, 
 							name = as.character(filter(private$BER_stat_tbl, casn == chemical_casn) %>% select(name) %>% distinct(name)),
 							product_use_category = puc,
-							direct_dermal = direct_dermal_val,
-							direct_ingestion = direct_ingestion_val,
-							direct_vapor = direct_vapor_val,
-							direct_aeorosol = direct_aeorosol_val,
-							indirect = indirect_val);
+							direct_dermal = direct_dermal_val * 10 ^ 6,
+							direct_ingestion = direct_ingestion_val * 10 ^ 6,
+							direct_vapor = direct_vapor_val * 10 ^ 6,
+							direct_aerosol = direct_aerosol_val * 10 ^ 6);
 				
 		  }
 		}
@@ -140,7 +128,10 @@ Class.Analysis.BERData <- R6Class("Class.Analysis.BERData",
     
 	
 	calcBERStatsDataExists = function (){
+		
+		
       if (is.null(private$calc_BER_stat_tbl) || nrow(private$calc_BER_stat_tbl) == 0){
+		
         return (FALSE);
       } else {
         return (TRUE);

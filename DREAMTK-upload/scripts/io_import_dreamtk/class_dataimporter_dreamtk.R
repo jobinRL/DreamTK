@@ -20,7 +20,7 @@ tableinfo <- list(
   assaytablename = "assay_data",
   assaytablevars = list ("aeid", "assay_name", "assay_component_name", "assay_component_endpoint_name",
                          "organism", "tissue", "cell_short_name", "biological_process_target", 
-                         "intended_target_family", "intended_target_family_sub", "gene_name", "gene_id"),
+                         "intended_target_family", "intended_target_family_sub", "gene_name", "gene_symbol"),
   
   ac50tablename = "ac50_data",
   ac50tablevars = list ("casn", "aeid", "ac50", "ac_top", "ac_cutoff", "hitc"),
@@ -37,7 +37,13 @@ tableinfo <- list(
   kowtablevars = list ("casn", "log_kow"),
   
   pkatablename = "pka_data",
-  pkatablevars = list ("casn", "pka")
+  pkatablevars = list ("casn", "pka"),
+  
+  cpdattablename = "cpdat_data",
+  cpdattablevars = list("casn","product_use_category","minimum_reported_weight_fraction","maximum_reported_weight_fraction","predicted_weight_fraction_mean","predicted_weight_fraction_05th_percentile", "predicted_weight_fraction_50th_percentile", "predicted_weight_fraction_95th_percentile"),
+  
+  shedsinfotablename = "shedsinfo_data",
+  shedsinfotablevars = list("product_use_category","frequency","mass_per_use","males","duration_of_direct_use","fcont","fret","fing","direct_dermal","direct_inhalation_of_vapor","direct_inhalation_of_aerosol","direct_incidental_ingestion","indirect")
 )
 #put the table information into an environment which can be passed around by reference
 list2env(tableinfo, envir = Class.DataImporter.dreamtk.tableinfo);
@@ -197,13 +203,14 @@ Class.DataImporter.dreamtk <- R6Class("Class.DataImporter.dreamtk",
         if ( all("*" %in% filter_val )) {
           #this filters data in ac50 to exclude the non hit assays.
           if(table == "ac50_data"){
-            imported_data <- filter(eval(as.name(table)), eval(hitc) %in% 1 ); 
+            imported_data <- filter(eval(as.name(table))); 
           }else{
+
           imported_data <- eval(as.name(table));
           }
         } else {
 			if(table == "ac50_data"){
-				imported_data <- filter(eval(as.name(table)) , eval(hitc) %in% 1 ); 
+				imported_data <- filter(eval(as.name(table))); 
 			}else{
 				imported_data <- filter(eval(as.name(table)), eval(as.name(filter_by)) %in% filter_val );
 			}

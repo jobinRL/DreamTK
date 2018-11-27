@@ -153,7 +153,7 @@ server <- function( input, output, session ){
                          progress$close();
                        });
                        progress$set(message = "", value = 0);
-                       n <- 4
+                       n <- 6;
                        #preload all rdata so that it will not need to be loaded during the first chem search
                        progress$inc(1/n, detail = "Importing chem info.");
                        dtk.import$obj$loadChemicalData();
@@ -161,6 +161,7 @@ server <- function( input, output, session ){
                        dtk.import$obj$loadPhysiologyData();
                        progress$inc(1/n, detail = "Importing assay info.");
                        dtk.import$obj$loadAssayInfo();
+					 
 					   
                        progress$inc(1/n, detail = "Setting up model imports.");
                        setupModels(input, output, session,
@@ -168,6 +169,12 @@ server <- function( input, output, session ){
                                    model.3css, dtk.import.3css,
                                    model.fubPoly, dtk.import.fubPoly,
                                    model.oed1);
+								   
+						progress$inc(1/n, detail = "Importing CPDat info.");
+                       dtk.import$obj$loadCPDatData();
+					   progress$inc(1/n, detail = "Importing Sheds info.");
+                       dtk.import$obj$loadShedData();
+					   
                        
                        #update available search autocomplete list from database
                        updateSearchAutocomplete(dtk.import$obj, chem_autocomplete);
@@ -236,7 +243,7 @@ server <- function( input, output, session ){
                  if (input$radio_searchtype == "casn"){
                    chems <- parseCasnSearch(input$field_search);
                  } else {
-                   chems <- parseNameSearch(dtk.import$obj, input$field_search); #slower?
+                   chems <- parseNameSearch(dtk.import$obj, input$field_search); 
                  }
                  
                  #reset search field
@@ -267,20 +274,22 @@ server <- function( input, output, session ){
                    chemlist <- chemlist[-duplicates_secondpass];
                    
                    tryCatch({ #throw user an error in case modeling throws any
-                     #Gabriel fix this once change to chemical is one
+                     #Gabriel fix this once change to chemical is done
                      #compute the models
+
                      runModels( chemlist,
                                 input, output, session,
                                 model.3css, model.oed1,
                                 progress, n );
                      progress$inc(1/n, detail = "Updating interface.");
+
                      #update chemical listbox
                      updateSelectedChemical( input, output, session, selected_chem, chem_manager);
                      updateChemListByRadioButtonSelection( input, output, session, selected_chem, chem_manager );
                      
                    }, error = function(e){
                      chem_manager$removeChemicals(chems); #error occurred processing these chemicals, remove them
-                     showNotification( e, type = "error", duration = 10 );
+                     showNotification( "error occured", type = "error", duration = 10 );
                    });
                    
                  } else {
@@ -291,7 +300,7 @@ server <- function( input, output, session ){
                  
                }
   );
-  
+
   #SEARCH TYPE RADIO BUTTON SELECTION <- update search autocomplete list by selected option
   observeEvent(input$radio_searchtype,
                {
@@ -528,74 +537,33 @@ server <- function( input, output, session ){
                  enableSearching( app_flags );
                }
   );
+
+  observeEvent(input$select_hit,
+				{
+					if(!is.null(input$select_chemical)){
+						CreateSelectedChemicalUI(input,output,session,selected_chem, chem_manager, selected_assay, selected_assay_endpoint, model.3css, model.oed1);
+						UpdateAssayComponentList(input,output,session,selected_chem,selected_assay,selected_assay_endpoint);
+					}
+				}
+  );
+
+  observeEvent(input$select_background,
+				{
+					updatePrettySwitch(session, "analyse_background", value = input$select_background);
+					if(!is.null(input$select_chemical)){
+						CreateSelectedChemicalUI(input,output,session,selected_chem, chem_manager, selected_assay, selected_assay_endpoint, model.3css, model.oed1);
+						UpdateAssayComponentList(input,output,session,selected_chem,selected_assay,selected_assay_endpoint);
+					}
+
+				}
+  );
   
   #Search: CHEMICAL LIST SELECTION -> results in update of assay list and population of chemical info
   observeEvent(input$select_chemical,
                {
-                 updateSelectedChemical(input, output, session, selected_chem, chem_manager);
-                 
-                 #get the selected chemical
-                 chem = selected_chem$chemical;
-                 selected_assay$name <- input$select_assay;
-                 selected_assay_endpoint$name <- input$select_assay_comp;
-                 #make a grouped list for the listbox
-                 assays <- distinct(chem$assay_info, assay_name);
-                 #clean up the view to remove extraneous labels
-                 assays <- sapply(assays, function(x){ return( unname(x) ); },
-                 USE.NAMES = TRUE
-                 );
-                 names(assays) <- NULL;
-                 x<<-assays;
-                 if(!is.atomic(assays) || is.null(assays) || length(assays[[1]]) == 0){
-                   assays <- NA;
-                   selected_assay$name <- NULL;
-                   selected_assay_endpoint$name <- NULL;
-                 } else {
-                   assays <- sort(assays);
-                 }
-                 if (!all(selected_assay$name %in% assays)) {
-                   selected_assay$name <- NULL;
-                 }
-                  
-                 #update assay list box
-                 updateSelectInput(session, inputId = "select_assay", selected = selected_assay$name,
-                                   choices = assays
-                 );
-                 #update chem info html text field
-                 output$html_chemicalinfo <- renderUI(
-                   {
-                     #obtain model names for which values will be taken
-                     css_model_name <- model.3css$getModelName();
-                     oed_model_name <- model.oed1$getModelName();
-                     
-                     datarow <- getBasicChemInfo( chem, css_model_name, oed_model_name, linesep="<br>" );
-                     
-                     HTML( 
-                       str_c( paste0("<strong>Chemical Name: </strong>", datarow$name), 
-                              paste0("<strong>CASN: </strong>", datarow$casn), 
-                              paste0("<strong>Cytotoxic (<100uM cytotoxicity): </strong>", datarow$cytotoxic),
-                              paste0("<strong>Cytotoxicity (uM): </strong>", datarow$cytotoxicity_um ),
-                              paste0("<strong>Ac50(min): </strong>", signif(datarow$min_ac50, digits = 4), " ", datarow$min_ac50_units),
-                              paste0("<strong>&emsp; For: </strong>"),
-                              paste0("<strong>&emsp; &emsp; Assay endpoint: </strong>", datarow$assay_component_endpoint_name),
-                              paste0("<strong>&emsp; &emsp; Organism: </strong>", datarow$organism),
-                              paste0("<strong>&emsp; &emsp; Tissue: </strong>", datarow$tissue),
-                              paste0("<strong>&emsp; &emsp; Cell: </strong>", datarow$cell_short_name),
-                              paste0("<strong>&emsp; &emsp; Biological process target: </strong>", datarow$biological_process_target),
-                              paste0("<strong>&emsp; &emsp; Intended target family: </strong>", datarow$intended_target_family, ": ", datarow$intended_target_family_sub),
-                              paste0("<strong>&emsp; &emsp; Gene: </strong>", datarow$gene_name),
-                              paste0("<strong>Css: </strong>", signif(datarow$css, digits = 4), " ", datarow$css_units),
-                              paste0("<strong>Css model: </strong>", datarow$css_model),
-                              paste0("<strong>Css assumptions: </strong>", datarow$css_assumptions),
-                              paste0("<strong>OED(min): </strong>", signif(datarow$min_oed, digits = 4), " ", datarow$min_oed_units),
-                              paste0("<strong>OED model: </strong>", datarow$oed_model),
-                              
-                              sep = '<br>') 
-                     );
-                   }
-                   
-                 );
-                 
+                 CreateSelectedChemicalUI(input,output,session,selected_chem, chem_manager, selected_assay, selected_assay_endpoint, model.3css, model.oed1);
+				 
+				 
                }
   );
   
@@ -797,20 +765,18 @@ server <- function( input, output, session ){
                               ~intended_target_family, ~intended_target_family_sub, ~gene_name,
                               ~min_oed, ~min_oed_units, ~oed_model);
       
-	  flag = FALSE;
+
 	  
       for ( chem in chemlist ){
-        datarow <- getBasicChemInfo( chem, css_model_name, oed_model_name, linesep="|" );
-		if(length(datarow$assay_component_endpoint_name) > 0){
-			output_table <- bind_rows(output_table, datarow);
-		}else{
-			flag = TRUE;
+        datarow <- getBasicChemInfo( chem, css_model_name, oed_model_name, linesep="|", input$select_background, input$select_hit );
+		#remove character(0) that doesn't allow for stuff to be saved.
+		for(i in 1:length(datarow)){
+			datarow[[i]] <- if(!(identical(datarow[[i]], character(0)))) datarow[[i]] else "";
 		}
+		output_table <- bind_rows(output_table, datarow);
 		
       }
-	  if(flag){
-		showNotification("Some chemical(s) in the list might not appear due to a lack of data.", type = "warning", duration = 5);
-      }
+
       write_excel_csv(output_table, path=file, na = "");
     }
   );
@@ -818,37 +784,7 @@ server <- function( input, output, session ){
   #Search: ASSAY LIST SELECTION, CHEMICAL LIST SELECTION -> results in population of assay component list, or clearing it if  new chem selected
   observeEvent( c(input$select_assay, input$select_chemical),
                 {
-                  selected_assay$name <- input$select_assay;
-                  chem <- selected_chem$chemical;
-                  
-                  if ( is.null(chem) ||
-                       is.null(selected_assay$name) ){
-                    assay_components <- NA;
-                    selected_assay_endpoint$name <- NULL;
-                  } else {
-                    #obtain component names for the chosen assay
-                    assay_components <- filter(chem$assay_info, assay_name == selected_assay$name ) %>%
-                      select(assay_component_endpoint_name);
-                    #clean up the view to remove extraneous labels
-                    assay_components <- sapply(assay_components, function(x){ return( unname(x) ); },
-                    USE.NAMES = TRUE
-                    );
-                    names(assay_components) <- NULL;
-                    if(!is.atomic(assay_components) || is.null(assay_components) || length(assay_components[[1]]) == 0){
-                      assay_components <- NA;
-                      selected_assay_endpoint$name <- NULL;
-                    } else {
-                      assay_components <- sort(assay_components);
-                    }
-                  }
-                  
-                  if (!all(selected_assay_endpoint$name %in% assay_components)){
-                    selected_assay_endpoint$name <- NULL;
-                  }
-                  #update assay component list box
-                  updateSelectInput(session, inputId = "select_assay_comp", selected = selected_assay_endpoint$name,
-                                    choices = assay_components
-                  );
+                 UpdateAssayComponentList(input,output,session,selected_chem,selected_assay,selected_assay_endpoint);
                   
                 }
   );
@@ -886,6 +822,7 @@ server <- function( input, output, session ){
                         itf <- datarow[["intended_target_family"]][[1]];
                         itfs <- datarow[["intended_target_family_sub"]][[1]];
                         gn <- datarow[["gene_name"]][[1]];
+						gs <- datarow[["gene_symbol"]][[1]];
                         ac50 <- datarow[["ac50"]][[1]]; #log10 value
                         acc <- datarow[["ac_cutoff"]][[1]]; #log10 value
                         act <- log10(datarow[["ac_top"]][[1]]); #log10 value
@@ -911,6 +848,7 @@ server <- function( input, output, session ){
                                  paste0("<strong>Intended Target Family: </strong>", itf),
                                  paste0("<strong>Intended Target Family Sub: </strong>", itfs),
                                  paste0("<strong>Gene: </strong>", gn),
+								 paste0("<strong>Gene Symbol: </strong>",gs),
                                  paste0("<strong>Ac50 (log10): </strong>", signif(ac50, digits = 4)),
                                  paste0("<strong>Ac Cutoff (log10): </strong>", signif(acc, digits = 4)),
                                  paste0("<strong>Ac50 above cutoff: </strong>", ifelse(ac50>acc, "Yes", "No")),
@@ -953,7 +891,14 @@ server <- function( input, output, session ){
         #obtain model names for which values will be taken
         css_model_name <- model.3css$getModelName();
         oed_model_name <- model.oed1$getModelName();
-        output_table <- selected_chem$chemical$assay_info %>% 
+		tmp = selected_chem$chemical$assay_info
+		if(!input$select_background){
+			tmp = subset(tmp,intended_target_family != "background measurement");
+		}
+		if(input$select_hit){
+			tmp = subset(tmp, hitc == 1);
+		}
+        output_table <- tmp %>% 
           left_join(selected_chem$chemical$model_results[[oed_model_name]], by = "aeid") %>%
           add_column(oed_model = oed_model_name);
         output_table$ac_top <- log10(output_table$ac_top); #convert to log10 for consistency with other values
@@ -1014,6 +959,18 @@ server <- function( input, output, session ){
                 
   );
   
+  #Stats: INCLUDE BACKGROUND ASSAYS BUTTON PRESSED ON ANALYSE MENU.
+  
+	observeEvent(input$analyse_background,
+				{
+					#here we just change the value of the select_background and update the chemical selected. We don't need to do anything else
+					updatePrettySwitch(session, "select_background", value = input$analyse_background);
+					if(!is.null(input$select_chemical)){
+						CreateSelectedChemicalUI(input,output,session,selected_chem, chem_manager, selected_assay, selected_assay_endpoint, model.3css, model.oed1);
+						UpdateAssayComponentList(input,output,session,selected_chem,selected_assay,selected_assay_endpoint);
+					}
+				}
+	);
   #Stats: RUN STATS BUTTON PRESSED <- computes and displays statistics
   observeEvent(input$button_stats_run,
                {
@@ -1022,7 +979,7 @@ server <- function( input, output, session ){
                  uilist <- c("#ui_stats_tfcounts", "#ui_stats_tfhm", "#ui_stats_assayhm",
                              "#ui_stats_scalartop", "#ui_stats_toxpi", "#ui_stats_toxpi2", "#ui_stats_toxpi_group");
 							 
-				clearAnalysisTabUI( input, output, session, 
+				clearTabUI( input, output, session, 
                                      uilist );
                  #depending on options selection the list is in casn or name format, obtain chemicals accordingly
                  if(input$radio_listtype == "casn"){
@@ -1032,7 +989,6 @@ server <- function( input, output, session ){
                    namelist <- input$select_chemical_stats;
                    chemicals <- chem_manager$getListOfChemicalsByName(namelist);
                  }
-                 #gabriel
                  numChems <- length(chemicals);
                  if( numChems>0 ){
                    
@@ -1044,7 +1000,6 @@ server <- function( input, output, session ){
                    
                    n <- 12; #number of progress bar updates
                    progress$set(message = "", value = 0);
-
                    #get analysis choices checkboxes and compute all analyses
 				   
 				   basicAnalysis = Class.Analysis.BasicAnalysis$new();
@@ -1122,13 +1077,13 @@ server <- function( input, output, session ){
 				 if(input$radio_listtype == "casn"){
                    tmp = basicAnalysis$basicData$getHitlessChemInfoByCasn();
 				   if(length(tmp)>0){
-						showNotification(paste0(paste(tmp, collapse=", "),  " might not appear on plots because they lack data"), type="warning", duration=length(tmp) + 5);
+						showNotification(paste0(paste(tmp, collapse=", "),  " might not appear on some plots because they lack data"), type="warning", duration=length(tmp) + 5);
 				   
 				   }
                  } else if (input$radio_listtype == "name"){
                    tmp = basicAnalysis$basicData$getHitlessChemInfoByName();
 				   if(length(tmp)>0){
-						showNotification(paste0(paste(tmp, collapse=", "), " might not appear on plots because they lack data."), type="warning", duration= length(tmp) + 5); #displaying this for 1 extra second per chemical
+						showNotification(paste0(paste(tmp, collapse=", "), " might not appear on some plots because they lack data."), type="warning", duration= length(tmp) + 5); #displaying this for 1 extra second per chemical
 				   
 				   }
                  }
@@ -1205,9 +1160,9 @@ server <- function( input, output, session ){
                    logerror("Could not run MFA. FactoMineR probably did not like something about missing data");
                    logerror(e);
                    showNotification("Could not run MFA. FactoMineR probably did not like something about missing data",
-                                    type = "error", duration = 10);
+                                    type = "error", duration = 5);
                    showNotification(paste0("Error detail: ", e),
-                                    type = "error", duration = 10);
+                                    type = "error", duration = 5);
                    return (NULL);
                  }
                  )
@@ -1216,6 +1171,99 @@ server <- function( input, output, session ){
                  createMFAUI( input, output, session,
                               mfaAnalysis$getChemData(), mfaAnalysis$getChemDataMFA(), 
                               id = "ui_mfa_plots" );
+
+               }
+  );
+  
+   #TAB: BER ---------------------------------------------------------------
+  
+  #BER: SELECT ALL BUTTON PRESSED <- selects all chemicals in the list
+  observeEvent(input$button_ber_selectall,
+               {
+
+                 if(input$radio_listtype == "casn"){
+                   selected <- chem_manager$getListOfChemicalCasn();
+                 } else if (input$radio_listtype == "name"){
+                   selected <- chem_manager$getListOfChemicalNames();
+                 }
+                 updateSelectizeInput(session, inputId = "select_chemical_ber", selected = selected);
+               }
+  );
+  
+  #BER: DESELECT ALL BUTTON PRESSED <- deselects all chemicals in the list
+  observeEvent(input$button_ber_deselectall,
+               {
+                 updateSelectizeInput(session, inputId = "select_chemical_ber", selected = "");
+               }
+  );
+  
+  #BER: RUN BER BUTTON PRESSED <- runs mfa
+  observeEvent(input$button_ber_run,
+               {
+                 
+                 #clear dynamic UI mfa output if exists
+                 removeUI(
+                   selector = "#ui_ber_plots", immediate = TRUE
+                 )
+				 
+				uilist <- c("ui_stats_ber");
+							 
+				clearTabUI( input, output, session, 
+                                     uilist );
+                 
+                 #progress bar
+                 progress <- shiny::Progress$new();
+                 on.exit({
+                   progress$close();
+                 });
+                 
+				 
+				 
+				 
+                 n <- 2; #number of progress bar updates
+                 progress$set(message = "", value = 0);
+                 progress$inc(1/n, detail = "Building BER table."); 
+				 
+				 #depending on options selection the list is in casn or name format, obtain chemicals accordingly
+                 if(input$radio_listtype == "casn"){
+                   caslist <- input$select_chemical_ber;
+                   chemicals <- chem_manager$getListOfChemicals(caslist);
+                 } else if (input$radio_listtype == "name"){
+                   namelist <- input$select_chemical_ber;
+                   chemicals <- chem_manager$getListOfChemicalsByName(namelist);
+                 }
+				 
+				 BERAnalysis = Class.Analysis.BERAnalysis$new();
+                 BERAnalysis$BERData$buildBERStatsTable(dtk.import$obj$getCpdatInfo() ,dtk.import$obj$getShedsInfo(),input$select_chemical_ber, label_by = input$radio_listtype );
+				 BERAnalysis$basicData$buildBasicStatsTable(chemicals);
+				 
+				 
+				 if(!BERAnalysis$BERData$BERStatsDataExists()){
+				   logwarn("Please select at least 1 valid chemical");
+                   showNotification("Please select at least 1 valid chemical", type = "error", duration = 5);
+                   return (NULL);
+				 }
+				  if(input$radio_listtype == "casn"){
+                   tmp = BERAnalysis$basicData$getHitlessChemInfoByCasn();
+				   if(length(tmp)>0){
+						showNotification(paste0(paste(tmp, collapse=", "),  " do not have any data for AC50 values."), type="warning", duration=length(tmp) + 5);
+				   
+				   }
+                 } else if (input$radio_listtype == "name"){
+                   tmp = BERAnalysis$basicData$getHitlessChemInfoByName();
+				   if(length(tmp)>0){
+						showNotification(paste0(paste(tmp, collapse=", "), " do not have any data for AC50 values."), type="warning", duration= length(tmp) + 5); #displaying this for 1 extra second per chemical
+				   
+				   }
+                 }
+				 
+				 
+				BERAnalysis$BERData$computeBER();
+                BERAnalysis$plotBER();  
+				BERAnalysis$plotBERvsAC50();
+                 progress$inc(1/n, detail = "Plotting BER results.");
+                 createBERUI( input, output, session, BERAnalysis,
+                            id = "ui_ber_plots" );
 
                }
   );

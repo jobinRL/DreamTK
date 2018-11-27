@@ -14,18 +14,20 @@ Class.Analysis.BERAnalysis <- R6Class("Class.Analysis.BERAnalysis",
   
 	#BER plot variables
 	pltBER = NULL,
-	tblBER = NULL#
-
+	tblBER = NULL,
+	tblMeanBER = NULL,#
+	pltBERvsAC50 = NULL
 	
 ),
 
 #public variables and functions
   public = list(
 	BERData =  NULL,
-
+	basicData = NULL,
     #constructor
     initialize = function(  ) {
 		self$BERData = Class.Analysis.BERData$new(); #Done here because it will be shared across all instances of the object otherwise.
+		self$basicData <- Class.Analysis.Data$new(  ); #Done here because it will be shared across all instances of the object otherwise.
 	},
     getBERData = function(){
 		return (self$BERData);
@@ -38,53 +40,56 @@ Class.Analysis.BERAnalysis <- R6Class("Class.Analysis.BERAnalysis",
 	
 	#Basic Analysis Region
 	
-	 #plots pie chart of target family counts
-	 #preconditions: target_family_counts is calculated
+
     plotBER = function(){
-      if ( self$BERData$calcBERStatsDataExists()) {
-		
+      if (self$BERData$calcBERStatsDataExists()) {
+		private$tblMeanBER = tribble(~casn,~name,~average_of_oral_BER, ~min_ac50_over_oral_BER, ~mean_ac50_over_oral_BER);
 		#getting our private data
         calc_BER_stat_tbl <- self$BERData$getCalcBERStatsTable();
+		chemical_casn_list <- unique(calc_BER_stat_tbl[["casn"]]);
+		AC50_stat_tbl <- self$basicData$getBasicStatsTable();
 		
-          if( length( unique(calc_BER_stat_tbl_tbl_local$casn) )>20 ){
-          sl <- FALSE;
-        } else {
-          sl <- TRUE;
-        }
-        
-        private$pltBER <- plot_ly(calc_BER_stat_tbl, x = ~scalar_top, y = ~oed, color = scalar_top_tbl_local[[label_by]], alpha = 0.5,
-                                 colors = rainbow(10, s = 3/4, v=3/4),
-                                 type = "scatter", mode = "markers",
-                                 symbol = above_cutoff_labels, symbols = c("circle", "x"),
-                                 hoverinfo = "text",
-                                 text = ~paste( "</br> Name: ", name,
-                                                "</br> Casn: ", casn,
-                                                "</br> Assay endpoint: ", assay_component_endpoint_name,
-                                                "</br> Above cutoff: ", above_cutoff,
-                                                "</br> OED (mg/kg/day): ", signif(oed, digits=5),
-                                                "</br> Scalar top: ", signif(scalar_top, digits=5))  ) %>% 
-          
-          layout(title = "OED vs Log scalar top",
-                 xaxis = list(title = "Log scalar top",
-                              titlefont = list(size = 14),
-                              type = "log"),
-                 yaxis = list(title = "OED (mg/kg/day)",
-                              titlefont = list(size = 14)),
-                 showlegend = sl,
-                 legend = list(orientation = "h")   );
-        
-      } else {
-        
-        private$plttfc <- NULL;
+		for(chemical_casn in chemical_casn_list){
+			casn_tbl <- filter(calc_BER_stat_tbl, casn == chemical_casn);
+			ac50_tbl <- filter(AC50_stat_tbl, casn == chemical_casn);
+			avg_mean = mean(casn_tbl$direct_ingestion + casn_tbl$direct_vapor + casn_tbl$direct_aerosol);
+			oral_ber = (casn_tbl$direct_ingestion + casn_tbl$direct_vapor + casn_tbl$direct_aerosol);
+			avg_ac50 = mean(10^ac50_tbl$ac50);
+			min_ac50 = min(10^ac50_tbl$ac50);
+			
+			
+			theorical_95th_percentile = quantile(oral_ber,0.95);
+			closest_to_95th = absolute.min(oral_ber - theorical_95th_percentile) + theorical_95th_percentile ; #gets the closest value to the 95th percentile.
+			
+			
+			private$tblMeanBER <- add_row(private$tblMeanBER, casn = chemical_casn, 
+						name = as.character(filter(calc_BER_stat_tbl, casn == chemical_casn) %>% select(name) %>% distinct(name)),
+						average_of_oral_BER = avg_mean,
+						min_ac50_over_oral_BER = closest_to_95th / min_ac50,
+						mean_ac50_over_oral_BER = closest_to_95th / avg_ac50
+						);
+				
+			
+		}
 
-      }
-      
-      invisible ( private$plttfc );
-      
+		invisible(private$tblMeanBER);
+     }   
+    },
+	
+	plotBERvsAC50 = function(){
+      if (self$BERData$calcBERStatsDataExists() && self$basicData$basicStatsDataExists()) {
+		BER_data = self$BERData$getCalcBERStatsTable();
+		basic_data = self$basicData$getBasicStatsTable();
+		
+	
+				
+		
+		invisible(private$tblMeanBER);
+     }   
     },
 
-	getTargetFamilyCountsPlot = function (){
-      return (private$plttfc);
+	getMeanBERTable = function (){
+      return (private$tblMeanBER);
     }
  
  

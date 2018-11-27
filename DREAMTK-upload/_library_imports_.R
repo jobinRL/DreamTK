@@ -12,7 +12,6 @@ library(tibble);
 library(tidyr);
 library(readr);
 library(purrr);
-library(pryr);
 library(dplyr);
 library(stringr);
 library(logging);

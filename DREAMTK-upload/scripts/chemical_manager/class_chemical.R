@@ -56,15 +56,34 @@ Class.Chemical <- R6Class(
     #finalizer
     finalize = function() {},
 
+	#calculates the amount of hits for a Chemical object, saves analysis results to Chemical object
+	calculateHitCount = function(){
+		 if (!is.null(self$assay_info) && length(self$assay_info$aeid) > 0){
+			#shortcut being used here. we don't need to sum we only need the length as all hitc = 1
+			hits = select(self$assay_info, hitc) %>% filter(hitc == 1);
+			
+			self$analysis_results$hitcount = length(hits$hitc);
+			
+		 }else{
+			self$analysis_results$hitcount = 0;
+		 }
+		 
+	},
+	#gabriel maybe should remake the whole chemical info box so that it filters better.
     #calculates minimum Ac50 for a Chemical object, saves analysis results to Chemical object
-    calculateMinAc50 = function(){
+    calculateMinAc50 = function(back,hit){
+	
       if (!is.null(self$assay_info) && length(self$assay_info$aeid) > 0){
         withCallingHandlers( #catch warnings that clutter up the console
           {
-			#bug fix here
-			#intended_target_family filter Gabriel to check with Andy
             valid_ac50 <- self$assay_info;
             valid_ac50$ac50 <- 10^(valid_ac50$ac50); #ac50 are log10 values, convert to regular value in uM units
+			if(!back){
+				valid_ac50 = subset(valid_ac50, intended_target_family != "background measurement");
+			}
+			if(hit){
+				valid_ac50 = subset(valid_ac50, hitc == 1);
+			}
             min_ac50 <- min(valid_ac50$ac50, na.rm = TRUE)[[1]]; #grab minimum ac50 values
             
             #find aeid for this value and set it to self
@@ -96,6 +115,45 @@ Class.Chemical <- R6Class(
       
       self$analysis_results$min_ac50 <- list(value = min_ac50, aeid = min_aeid, units = min_ac50_units);
       invisible (min_ac50);
+    },
+	
+	 calculateAVGAc50 = function(back,hit){
+      if (!is.null(self$assay_info) && length(self$assay_info$aeid) > 0){
+        withCallingHandlers( #catch warnings that clutter up the console
+          {
+		  
+			
+            valid_ac50 <- self$assay_info;
+            valid_ac50$ac50 <- 10^(valid_ac50$ac50); #ac50 are log10 values, convert to regular value in uM units
+			if(!back){
+				valid_ac50 = subset(valid_ac50, intended_target_family != "background measurement");
+			}
+			if(hit){
+				valid_ac50 = subset(valid_ac50, hitc == 1);
+			}
+
+            avg_ac50 <- mean(valid_ac50$ac50, na.rm = TRUE)[[1]]; #grab average ac50 values
+            
+          },
+          warning=function(w) { 
+            logdebug(str_c("calculateAVGAc50() warning:", w));
+            invokeRestart("muffleWarning");
+          }
+        )
+      } else {
+        avg_ac50 <- NA;
+      }
+      if( !is.finite(avg_ac50) ){
+        avg_ac50 <- NA;
+      }
+      if(!is.na(avg_ac50)){
+        avg_ac50_units <- "uM";
+      } else {
+        avg_ac50_units <- "";
+      }
+      
+      self$analysis_results$avg_ac50 <- list(value = avg_ac50, units = avg_ac50_units);
+      invisible (avg_ac50);
     },
 	
     #calculate minimum OED for a Chemical object given a certain name for the OED model,saves analysis results to Chemical object

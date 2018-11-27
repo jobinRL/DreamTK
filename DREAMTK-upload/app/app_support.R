@@ -5,7 +5,7 @@
 # Version number and revision
 app.version.major <- "0";
 app.version.minor <- "7";
-app.version.revision <- "5";
+app.version.revision <- "9";
 
 #num columns 
 num_plot_cols <- 1;
@@ -23,8 +23,8 @@ setupModels = function ( input, output, session,
   dtk.import$setSource(dtk.db);
   dtk.import.3css$setSource(dtk.db);
   dtk.import.fubPoly$setSource(dtk.db);
-  
-  dtk.import$loadPhysiologyData
+  #what is this line? I guess it does nothing
+  #dtk.import$loadPhysiologyData
   
   #set up model objects
   model.fubPoly$setImporters(dtk.import, dtk.import.fubPoly);
@@ -35,7 +35,10 @@ setupModels = function ( input, output, session,
   model.3css$setParameters ( sig.threshold = 0.1); #as per [Pearce et al 2017] httk-1.7 paper
   model.3css$importPhysiologyData();
   
+  #model.3css$importModelData();
+  
   model.oed1$setParameters( cssmodel = model.3css$getModelName() ); #OED model will use Css from 3css model calculations
+  
   
 }
 
@@ -57,9 +60,10 @@ runModels = function( chemlist,
 	#
 	if(!is.null(progress) && !is.null(n)) progress$inc(1/n, detail = "Computing basic stats");
 	for (chem in chemlist){
-		chem$calculateMinAc50();
+		chem$calculateMinAc50(input$select_background, input$select_hit);
 		chem$calculateMinOED(model.oed1$getModelName() );
 	}
+
 
 }
 # Analysis-related functions ----------------------------------------------------
@@ -72,7 +76,7 @@ computeAnalyses = function ( input, output, session,
 	if(any(c("tfcounts","scalartop_ac50","scalartop_oed","tfhm", "assayhm", "toxpi", "toxpi2",  "toxpigroup") %in% stat_choices)){
 		progress$inc(1/n, detail = "Building main analysis tables.");
 		loginfo("Stats: Building main analysis tables.");
-		basicAnalysis$basicData$buildBasicStatsTable(chemicals);
+		basicAnalysis$basicData$buildBasicStatsTable(chemicals, input$analyse_background);
 	}
 
 	if("scalartop_oed" %in% stat_choices){
@@ -174,19 +178,34 @@ removeChemsThatExistInChemicalManager = function( session, input, output, chems,
 
 # Info getters -------------------------------------------------------
 
-#obtain minimum Ac50, calculate if unavailable
-getMinAc50 = function(chem){
-	if ( !is.null(chem$analysis_results$min_ac50) ) {
-		min_ac50 <- chem$analysis_results$min_ac50$value;
+#obtain Hits, calculate if unavailable
+getHitCount = function(chem){
+	if ( !is.null(chem$analysis_results$hitcount) ) {
+		hitcount <- chem$analysis_results$hitcount;
 	} else {
-		min_ac50 <- NULL;
+		hitcount <- NULL;
 	}
 	
-	if ( is.null(min_ac50) ){
-		min_ac50 <- chem$calculateMinAc50();
+	if ( is.null(hitcount) ){
+		hitcount <- chem$calculateHitCount();
 	}
+	return ( hitcount );
+}
+
+#gabriel this should probably be deleted there's no use for it.
+#obtain minimum Ac50, Always calculate.
+getMinAc50 = function(chem, back, hit){
+	min_ac50 <- chem$calculateMinAc50(back,hit);
 	return ( min_ac50 );
 }
+#gabriel this should probably be deleted there's no use for it.
+#obtain average Ac50, Always Calculate.
+getAVGAc50 = function(chem, back, hit){
+
+	avg_ac50 <- chem$calculateAVGAc50(back,hit);
+	return ( avg_ac50 );
+}
+
 
 #obtain minimum OED, calculate if unavailable
 getMinOED = function(chem, oed_model_name ){
@@ -203,7 +222,7 @@ getMinOED = function(chem, oed_model_name ){
 }
 
 #obtain basic chemical information
-getBasicChemInfo = function( chem, css_model_name, oed_model_name, linesep = "<br>" ){
+getBasicChemInfo = function( chem, css_model_name, oed_model_name, linesep = "<br>", back, hit ){
 	#obtain css value and units
 	css <- chem$model_results[[css_model_name]]$value;
 	css_units <- chem$model_results[[css_model_name]]$units;
@@ -217,8 +236,13 @@ getBasicChemInfo = function( chem, css_model_name, oed_model_name, linesep = "<b
 	min_oed_units <- chem$analysis_results$min_oed$units;
 	
 	#obtain minimum ac50 value and units
-	min_ac50 <- getMinAc50(chem );
+	min_ac50 <- getMinAc50(chem, back, hit);
 	min_ac50_units <- chem$analysis_results$min_ac50$units;
+	
+	avg_ac50 <- getAVGAc50(chem, back, hit);
+	avg_ac50_units <- chem$analysis_results$avg_ac50$units;
+	
+	hitcount <- getHitCount(chem);
 	
 	aei <- chem$analysis_results$min_ac50$aeid;
 	if ( !is.null(aei) && !length(aei) == 0 ){
@@ -250,6 +274,9 @@ getBasicChemInfo = function( chem, css_model_name, oed_model_name, linesep = "<b
 					css_assumptions = css_assumptions,
 					min_ac50 = min_ac50,
 					min_ac50_units = min_ac50_units,
+					avg_ac50 = avg_ac50,
+					avg_ac50_units = avg_ac50_units,
+					hitcount = hitcount,
 					assay_component_endpoint_name = chemassayrow$assay_component_endpoint_name,
 					organism = chemassayrow$organism,
 					tissue = chemassayrow$tissue,
@@ -298,6 +325,10 @@ updateChemListByRadioButtonSelection = function( input, output, session, selecte
 	updateSelectizeInput(session, inputId = "select_chemical_mfa",
 					choices = choices
 	);
+	
+	updateSelectizeInput(session, inputId = "select_chemical_ber",
+					choices = choices
+	);
 }
 #updates selected chemical variable
 updateSelectedChemical = function( input, output, session, selected_chem, chem_manager){
@@ -313,6 +344,128 @@ updateSelectedChemical = function( input, output, session, selected_chem, chem_m
 	selected_chem$chemical <- chem_manager$getChemical( selected_chem$casn );
 }
 
+CreateSelectedChemicalUI = function(input,output,session,selected_chem, chem_manager, selected_assay, selected_assay_endpoint, model.3css,model.oed1){
+				updateSelectedChemical(input, output, session, selected_chem, chem_manager);
+                 #get the selected chemical
+                 chem = selected_chem$chemical;
+                 selected_assay$name <- input$select_assay;
+                 selected_assay_endpoint$name <- input$select_assay_comp;
+                 #make a grouped list for the listbox
+                 
+				 #here we filter based on what the user want
+				 tmp = chem$assay_info;
+				 
+				 if(!input$select_background){
+					tmp = subset(tmp, intended_target_family != "background measurement");
+				 }
+				 if(input$select_hit){
+					tmp = subset(tmp, hitc == 1);
+				 }
+				 assays <- distinct(tmp, assay_name);
+				 
+                 #clean up the view to remove extraneous labels
+                 assays <- sapply(assays, function(x){ return( unname(x) ); },
+                 USE.NAMES = TRUE
+                 );
+                 names(assays) <- NULL;
+                 x<<-assays;
+                 if(!is.atomic(assays) || is.null(assays) || length(assays[[1]]) == 0 ){
+                   assays <- NA;
+                   selected_assay$name <- NULL;
+                   selected_assay_endpoint$name <- NULL;
+                 } else {
+                   assays <- sort(assays);
+                 }
+                 if (!all(selected_assay$name %in% assays)) {
+                   selected_assay$name <- NULL;
+                 }
+                  
+                 #update assay list box
+                 updateSelectInput(session, inputId = "select_assay", selected = selected_assay$name,
+                                   choices = assays
+                 );
+                 #update chem info html text field
+                 output$html_chemicalinfo <- renderUI(
+                   {
+                     #obtain model names for which values will be taken
+                     css_model_name <- model.3css$getModelName();
+                     oed_model_name <- model.oed1$getModelName();
+                     
+                     datarow <- getBasicChemInfo( chem, css_model_name, oed_model_name, linesep="<br>", input$select_background, input$select_hit  );
+                     
+                     HTML( 
+                       str_c( paste0("<strong>Chemical Name: </strong>", datarow$name), 
+                              paste0("<strong>CASN: </strong>", datarow$casn), 
+                              paste0("<strong>Cytotoxic (<100uM cytotoxicity): </strong>", datarow$cytotoxic),
+                              paste0("<strong>Cytotoxicity (uM): </strong>", datarow$cytotoxicity_um ),
+							  paste0("<strong>Hit Count: </strong>", datarow$hitcount),
+							  paste0("<strong>Ac50(avg): </strong>", signif(datarow$avg_ac50, digits = 4), " ", datarow$avg_ac50_units),
+                              paste0("<strong>Ac50(min): </strong>", signif(datarow$min_ac50, digits = 4), " ", datarow$min_ac50_units),
+                              paste0("<strong>&emsp; For: </strong>"),
+                              paste0("<strong>&emsp; &emsp; Assay endpoint: </strong>", datarow$assay_component_endpoint_name),
+                              paste0("<strong>&emsp; &emsp; Organism: </strong>", datarow$organism),
+                              paste0("<strong>&emsp; &emsp; Tissue: </strong>", datarow$tissue),
+                              paste0("<strong>&emsp; &emsp; Cell: </strong>", datarow$cell_short_name),
+                              paste0("<strong>&emsp; &emsp; Biological process target: </strong>", datarow$biological_process_target),
+                              paste0("<strong>&emsp; &emsp; Intended target family: </strong>", datarow$intended_target_family, ": ", datarow$intended_target_family_sub),
+                              paste0("<strong>&emsp; &emsp; Gene: </strong>", datarow$gene_name),
+                              paste0("<strong>Css: </strong>", signif(datarow$css, digits = 4), " ", datarow$css_units),
+                              paste0("<strong>Css model: </strong>", datarow$css_model),
+                              paste0("<strong>Css assumptions: </strong>", datarow$css_assumptions),
+                              paste0("<strong>OED(min): </strong>", signif(datarow$min_oed, digits = 4), " ", datarow$min_oed_units),
+                              paste0("<strong>OED model: </strong>", datarow$oed_model),
+                              
+                              sep = '<br>') 
+                     );
+                   }
+                   
+                 );
+}
+
+UpdateAssayComponentList = function(input,output,session,selected_chem,selected_assay,selected_assay_endpoint){
+
+ selected_assay$name <- input$select_assay;
+                  chem <- selected_chem$chemical;
+                  
+                  if ( is.null(chem) ||
+                       is.null(selected_assay$name) ){
+                    assay_components <- NA;
+                    selected_assay_endpoint$name <- NULL;
+                  } else {
+                    #obtain component names for the chosen assay and the right endpoints that hit and aren't background compared to what the user asked
+					
+				 assay_components <- filter(chem$assay_info, assay_name == selected_assay$name )
+				 if(!input$select_background){
+					assay_components = subset(assay_components, intended_target_family != "background measurement");
+				 }
+				 if(input$select_hit){
+					assay_components = subset(assay_components, hitc == 1);
+				 }
+                     
+                    assay_components =  select(assay_components, assay_component_endpoint_name);
+                    #clean up the view to remove extraneous labels
+                    assay_components <- sapply(assay_components, function(x){ return( unname(x) ); },
+                    USE.NAMES = TRUE
+                    );
+                    names(assay_components) <- NULL;
+                    if(!is.atomic(assay_components) || is.null(assay_components) || length(assay_components[[1]]) == 0){
+                      assay_components <- NA;
+                      selected_assay_endpoint$name <- NULL;
+                    } else {
+                      assay_components <- sort(assay_components);
+                    }
+                  }
+                  
+                  if (!all(selected_assay_endpoint$name %in% assay_components)){
+                    selected_assay_endpoint$name <- NULL;
+                  }
+                  #update assay component list box
+                  updateSelectInput(session, inputId = "select_assay_comp", selected = selected_assay_endpoint$name,
+                                    choices = assay_components
+                  );
+} 
+
+
 #disable/enable searching and custom	chemical loading
 disableSearching = function( app_flags ){
 	app_flags$enable_searching <- FALSE;
@@ -327,8 +480,8 @@ enableSearching = function( app_flags ){
 	shinyjs::enable(id = "field_search");
 }
 
-#Analysis tab - clear UI outputs
-clearAnalysisTabUI = function( input, output, session, uilist ){
+#tab - clear UI outputs
+clearTabUI = function( input, output, session, uilist ){
 	 
 	
 	#clear dynamic UI stats output if exists
@@ -414,10 +567,11 @@ createTargetFamilyCountUI = function( input, output, session,
 							selection="none", filter="bottom", extensions = "Buttons",
 							options=list(buttons = c('copy', 'csv', 'excel'), dom = "Blfrtip",
 										pageLength = 10, searchHighlight = TRUE,
-										scrollX=TRUE, scrollCollapse=TRUE)) %>%
+										scrollX=TRUE, scrollCollapse=TRUE), rownames = FALSE) %>%
 										formatRound(columns=c("avg_ac50", "min_ac50"), digits=5);
 		
 	});
+	
 	
 }
 
@@ -593,7 +747,7 @@ createScalarTopUI = function( input, output, session,
 	}
 	
 	#always output data table even if it is empty, process table on client side
-	output$table_stats_scalartop <- DT::renderDataTable(server = FALSE, {
+	output$table_stats_scalartop <- DT::renderDataTable(server = FALSE,  {
 		
 		round_cols <- c("ac50", "ac_cutoff", "ac_top", "scalar_top");
 		if (any("scalartop_oed" %in% stat_choices)){
@@ -608,7 +762,7 @@ createScalarTopUI = function( input, output, session,
 					selection="none", filter = "bottom", extensions = "Buttons",
 					options=list(buttons = c('copy', 'csv', 'excel'), dom = "Blfrtip",
 					pageLength = 10, searchHighlight = TRUE, lengthMenu = c(10, 20, 50, 100),
-					scrollX=TRUE, scrollCollapse=TRUE)) %>%
+					scrollX=TRUE, scrollCollapse=TRUE), rownames= FALSE) %>%
 					formatRound(columns = round_cols, digits=5);
 		
 	})
@@ -684,7 +838,7 @@ createToxPI2UI = function( input, output, session,
                           tags$h3("About plot"),
                           HTML( 
                             str_c( "<p>Individual ToxPI Plots represent the relative activity levels of response, top scaled response and cytotoxicity concentration for each chemical.</p>",
-                                   "<p><strong>Slice height:</strong> target activity expressed as LOG10( 1/ac50 ) normalized within chemical to a range between 0 and 1.</p>"
+                                   "<p><strong>Slice height:</strong> target activity expressed as LOG10( ac50 ) normalized within chemical to a range between 0 and 4.</p>"
                             )
                           ),
                           circle = TRUE, status = "danger", icon = icon("question-circle"), width = "300px",
@@ -905,5 +1059,85 @@ createMFAUI = function( input, output, session,
       )
     }
   )
+}
   
+#BER tab - create BER output UI
+createBERUI = function( input, output, session, BERAnalysis, id ){
+ 
+  insertUI(
+    selector = "#ui_ber",
+    where = "beforeEnd",
+	ui = fluidRow(id = id,
+						if( BERAnalysis$BERData$calcBERStatsDataExists()){
+							box(status = "primary", title = "BER Analysis Table", collapsible = TRUE, width = 12,
+								
+									
+								column(12, offset = 0,
+									wellPanel(
+										DT::dataTableOutput(outputId = "table_stats_BER")
+										)
+									)
+								)
+						}else{
+							box(status = "primary", title = "BER Analysis Table", collapsible = TRUE, width = 12,
+								column(12, offset = 0,
+									h3("No BER Data available for the chemical(s). No Table to plot.", 
+									id = "table_stats_BER", style = "color:red")
+								)
+							)
+						},
+						br(),
+						if( BERAnalysis$BERData$calcBERStatsDataExists()){
+							box(status = "primary", title = "BER Agregated Analysis Table", collapsible = TRUE, width = 12,
+								dropdownButton(
+									  tags$h3("About plot"),
+									  HTML( 
+										str_c( "<p>Oral BER of a product use category for a chemical is the summation of the direct incidental ingestion, direct aerosol ingestion and direct vapor ingestion.</p>",
+												"<p><strong>Mean:</strong> This value is calculating by getting the average of all the product categories of each chemical.</p>",
+												"<p><strong>Percentile Value:</strong> The actual Oral BER value closest to the percentile value being calculated.</p>"
+										)
+									  ),
+									  circle = TRUE, status = "danger", icon = icon("question-circle"), width = "300px",
+									  tooltip = NULL
+								),
+								br(),
+								
+								column(12, offset = 0,
+									wellPanel(
+										DT::dataTableOutput(outputId = "table_stats_mean_BER")
+										)
+									)
+								)
+						}else{
+							box(status = "primary", title = "BER Agregated Analysis Table", collapsible = TRUE, width = 12,
+								column(12, offset = 0,
+									h3("No BER Data available for the chemical(s). No Table to plot.", 
+									id = "table_stats_mean_BER", style = "color:red")
+								)
+							)
+							
+						}
+						
+		)
+	);
+
+	output$table_stats_BER <- DT::renderDataTable(server = FALSE,  {
+		datatable( BERAnalysis$BERData$getCalcBERStatsTable(), 
+					selection="none", filter = "bottom", extensions = "Buttons",
+					options=list(buttons = c('copy', 'csv', 'excel'), dom = "Blfrtip",
+					pageLength = 10, searchHighlight = TRUE, lengthMenu = c(10, 20, 50, 100),
+					scrollX=TRUE, scrollCollapse=TRUE), rownames= FALSE) 
+
+		}
+	);
+	
+	output$table_stats_mean_BER <- DT::renderDataTable(server = FALSE,  {
+		datatable( BERAnalysis$getMeanBERTable(), 
+					selection="none", filter = "bottom", extensions = "Buttons",
+					options=list(buttons = c('copy', 'csv', 'excel'), dom = "Blfrtip",
+					pageLength = 10, searchHighlight = TRUE, lengthMenu = c(10, 20, 50, 100),
+					scrollX=TRUE, scrollCollapse=TRUE), rownames= FALSE) 
+
+		}
+	);
 }

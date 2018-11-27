@@ -205,6 +205,7 @@ Class.DataImporter.dreamtk <- R6Class("Class.DataImporter.dreamtk",
           if(table == "ac50_data"){
             imported_data <- filter(eval(as.name(table))); 
           }else{
+
           imported_data <- eval(as.name(table));
           }
         } else {

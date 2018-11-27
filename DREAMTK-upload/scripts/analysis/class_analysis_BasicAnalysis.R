@@ -219,6 +219,9 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
         } else {
           sl <- TRUE;
         }
+		
+
+		
         
         #note: ac50 is log10 value, scalar_top is not
         private$pltst_ac50 <- plot_ly(scalar_top_tbl_local, x = ~scalar_top, y = ~ac50, color = scalar_top_tbl_local[[label_by]], alpha = 0.5,
@@ -226,6 +229,7 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
                            type = "scatter", mode = "markers",
                            symbol = above_cutoff_labels, symbols = c("circle", "x"),
                            hoverinfo = "text",
+						   
                            text = ~paste( "</br> Name: ", name,
                                          "</br> Casn: ", casn,
                                          "</br> Assay endpoint: ", assay_component_endpoint_name,
@@ -240,7 +244,8 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
                  yaxis = list(title = "Log ac50",
                               titlefont = list(size = 14)),
                  showlegend = sl,
-                 legend = list(orientation = "h")   );
+                 legend = list(orientation = "h")
+				 );
         
       } else {
         
@@ -341,7 +346,7 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
       chemical_casn_list <- unique(basic_table[["casn"]]);
       for (chemical_casn in chemical_casn_list){
         
-        target_family_count_tbl <- filter(basic_table, casn == chemical_casn) %>% 
+        target_family_count_tbl <- filter(basic_table, casn == chemical_casn, above_cutoff == "Y") %>% 
           select(casn, name, intended_target_family) %>% 
           drop_na(intended_target_family);
         target_family_counts <- count(target_family_count_tbl, intended_target_family); #colnames: intended_target_family, n
@@ -352,7 +357,7 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
 		
         for ( target_family in target_family_counts$intended_target_family ){
           
-          df <- filter(basic_table, casn == chemical_casn, intended_target_family == target_family) %>% 
+          df <- filter(basic_table, casn == chemical_casn, intended_target_family == target_family, above_cutoff == "Y") %>% 
             drop_na(ac50);         
 		 
           df$ac50 <- 10^(df$ac50); #ac50 is originally in log10
@@ -378,20 +383,20 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
         #add rearranged ac50 into the table
         target_family_ac_tbl <- add_column(target_family_ac_tbl, re_avg_ac50 = re_avg_ac50);
         
-        #add the taget family counts and ac50 table to the list, keyed by target family; then sort by re_avg_ac50
-
-		if(nrow(target_family_ac_tbl)> 0 && nrow(target_family_counts)>0){
+        #add the taget family counts and ac50 table to the list, keyed by target family; then sort by re_avg_ac50		
+				
+		if(nrow(target_family_ac_tbl)> 0 && nrow(target_family_counts)> 0){
 			private$target_family_ac_list[[chemical_casn]] <- full_join(target_family_counts, target_family_ac_tbl, 
                                                                     by = "intended_target_family") %>% 
 			arrange(intended_target_family);
 			
 		
 		}else{
-			chemical = select(basic_table, casn, name) %>% filter(chemical_casn == casn);
+			chemical = select(basic_table, casn, name) %>% filter(chemical_casn == casn) %>% distinct(casn,name);
 			self$basicData$addHitlessChemInfo(chemical);
 		}
       }
-	
+
       return ( private$target_family_ac_list );
     },
     
@@ -408,47 +413,36 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
       }
      
 	  basic_table <- self$basicData$getBasicStatsTable();
-	 
       chemical_casn_list <- unique(basic_table[["casn"]]);
       for (chemical_casn in chemical_casn_list){
-       
-        target_family_count_tbl <- filter(basic_table, casn == chemical_casn) %>% 
-          select(casn, name, intended_target_family) %>% 
-          drop_na(intended_target_family);
-        
-        target_family_counts <- count(target_family_count_tbl, intended_target_family); #colnames: intended_target_family, n
-        
-        target_family_ac_tbl <- tribble(~intended_target_family, ~avg_ac50, ~avg_cyto, ~avg_top);
-        for ( target_family in target_family_counts$intended_target_family ){
+           
+        dfa <- filter(basic_table, casn == chemical_casn,above_cutoff == "Y", ac50 >= -2, ac50 <= 1000, cytotoxicity_um > 0.01) %>% drop_na(ac50);
           
-          dfa <- filter(basic_table, casn == chemical_casn, intended_target_family == target_family) %>% 
-            drop_na(ac50);
-          
-          dfa$ac50 <- 10^(dfa$ac50); #ac50 is originally in log10
-          avg_ac50 <- mean(dfa$ac50, na.rm = TRUE)
-          avg_cyto <- min(dfa$cytotoxicity_um, na.rm=TRUE);
-          avg_top <- dfa$ac_top / dfa$ac50;
-          avg_top[avg_top > 1000] <- 1000;
-          
-          target_family_ac_tbl <- add_row(target_family_ac_tbl, 
-                                          intended_target_family = target_family, avg_ac50 = avg_ac50, 
-                                          avg_cyto = avg_cyto, avg_top = avg_top);
-        }
-        
-        #add the taget family counts and ac50 table to the list, keyed by target family; then sort by re_avg_ac50
-		if(nrow(target_family_ac_tbl)> 0 && nrow(target_family_counts)>0){
+        dfa$ac50 <- 10^(dfa$ac50); #ac50 is originally in log10
+        avg_ac50 <- mean(dfa$ac50, na.rm = TRUE)
+        avg_cyto <- min(dfa$cytotoxicity_um, na.rm=TRUE);
+        avg_top <- mean(dfa$ac_top / dfa$ac50, na.rm = TRUE);
+        avg_top[avg_top > 1000] <- 1000;
 		
-			private$target_family_ac_list_tox[[chemical_casn]] <- full_join(target_family_counts, target_family_ac_tbl, 
-																by = "intended_target_family");
+	
+        #range_tp <- diff(range(dfa$ac_top / dfa$ac50));
+		#this is fine because it's linear scaling not brute forcing values to be positive.
+		val_ac = (log10(avg_ac50) + 2) * 0.8;
+		val_ct = (log10(avg_cyto) + 2) * 0.8;
+		val_tp = (log10(avg_top) + 2) * 0.8;
+        #val_tp = min(max(-log10(avg_top/range_tp),0),4);
+		#val_tp = -log10(avg_top/range_tp);
+        #add the taget family counts and ac50 table to the list, keyed by target family; then sort by re_avg_ac50
+		if(nrow(dfa)> 0){
+		
+			private$target_family_ac_list_tox[[chemical_casn]] <- tibble(val_ac, val_ct, val_tp);
 		
 		}else{
-				chemical = select(basic_table, casn, name) %>% filter(chemical_casn == casn);
+				chemical = select(basic_table, casn, name) %>% filter(chemical_casn == casn) %>% distinct(casn,name);
 				self$basicData$addHitlessChemInfo(chemical);
 			}
 	  }
-	  
-	  
-      return ( private$target_family_ac_list_tox );
+      return ( private$target_family_ac_list_tox);
     },
     
     #toxPi tables for plotting
@@ -464,13 +458,11 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
 	  basic_table <- self$basicData$getBasicStatsTable();
 	  
       #create a common count table
-      all_chem_tfac_table <- select(basic_table, casn, name, intended_target_family, ac50) ;
-	  
+      all_chem_tfac_table <- select(basic_table, casn, name, intended_target_family, ac50, above_cutoff) %>% filter(above_cutoff == "Y");
       all_chem_tfac_table$ac50 <- 10^(all_chem_tfac_table$ac50);
       all_chem_tfac_table <- group_by(all_chem_tfac_table, casn, intended_target_family) %>% 
         mutate(avg_ac50 = mean(ac50, na.rm=TRUE)) %>% ungroup() %>% 
         distinct(casn, name, intended_target_family, avg_ac50) # %>% drop_na(all_chem_tfac_table,intended_target_family);
-
 	  tmp = drop_na(all_chem_tfac_table);
 	  all_chem_tfac_table = tmp;
 
@@ -496,15 +488,15 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
       
       
       #create a counts table, which should have all equal counts to space pie slices out evenly
-      all_chem_family_counts <- select(basic_table, intended_target_family) %>% distinct(intended_target_family);
+      all_chem_family_counts <- select(all_chem_tfac_table, intended_target_family) %>% distinct(intended_target_family);
       all_chem_family_counts <- add_column(all_chem_family_counts, n = 1);
+
 	  
 	  tmp = drop_na(all_chem_family_counts);
 	  all_chem_family_counts = tmp;
       
       chemical_casn_list <- unique(basic_table[["casn"]]);
       for (chemical_casn in chemical_casn_list){
-        
         target_family_ac_tbl <- filter(all_chem_tfac_table, casn == chemical_casn) %>% 
           select(intended_target_family, avg_ac50, re_avg_ac50);
 		  
@@ -514,10 +506,11 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
 																			  by = "intended_target_family") %>% 
 			  replace_na( list(avg_ac50 = 0, re_avg_ac50 = 0) ) %>% arrange(intended_target_family);
 		}else{
-			chemical = select(basic_table, casn, name) %>% filter(chemical_casn == casn);
+			chemical = select(basic_table, casn, name) %>% filter(chemical_casn == casn) %>% distinct(casn,name);
 			self$basicData$addHitlessChemInfo(chemical);
 		}
       }
+
       return ( private$target_family_ac_list_group );
     },
     
@@ -686,31 +679,25 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
 		   plotdata <- private$target_family_ac_list_tox[[chem_casn]];
 		   
            #  create mean of each row
-           ac <- mean(plotdata$avg_ac50);
-           ct <- mean(plotdata$avg_cyto);
-           tp <- mean(plotdata$avg_top);
+
           
+          
+
 		   
-           range_ac <- range(plotdata$avg_ac50);
-           range_ct <- range(plotdata$avg_cyto);
-           range_tp <- range(plotdata$avg_top);
-		    
-           range_ac <- diff(range_ac);
-           range_tp <- diff(range_tp);
-           
-           val_ac <- min(max(-log10(1/ac/range_ac*10),0),1);
-           val_ct <- min(max(-log10(1/ct/range_ac*10),0),1);
-           val_tp <- min(max(-log10(1/tp/range_ac*10),0),1);
+		   #val_ac <- min(max( -log10(1/plotdata$avg_ac50/plotdata$range_ac*10),0),4);
+           #val_ct <- min(max(-log10(1/plotdata$avg_cyto/plotdata$range_ac*10),0),4);
+           #val_tp <- min(max(-log10(1/plotdata$avg_top/plotdata$range_tp*10),0),4);
+		   
 		 #NAN somewhere here.
 		  #DUMMY CHECK TO CHANGE WHEN WE FIGURE OUT THE CAUSE OF THE NAN VALUES AND THE SOLUTION. THIS CAUSES THE TOXPIES TO NOT CRASH. GABRIEL 
-		   val_ac <- if(is.nan(val_ac)) 0 else val_ac;
-		   val_ct <- if(is.nan(val_ct)) 0 else val_ct;
-		   val_tp <- if(is.nan(val_tp)) 0 else val_tp;
+		   plotdata$val_ac <- if(is.nan(plotdata$val_ac)) 0 else plotdata$val_ac;
+		   plotdata$val_ct <- if(is.nan(plotdata$val_ct)) 0 else plotdata$val_ct;
+		   plotdata$val_tp <- if(is.nan(plotdata$val_tp)) 0 else plotdata$val_tp;
            plot_label <- c('AC50', 'Cytotoxity', 'Top Response');
-           plot_values <- c(val_ac, val_ct, val_tp);
+           plot_values <- c(plotdata$val_ac, plotdata$val_ct, plotdata$val_tp);
            colorpalette <- rainbow(3);
            #gabe
-
+			#the limit is set at 4 apparently...
 
            dfb <- data.frame(plot_label, plot_values);
            pltpi <-  ggplot(dfb, aes(x=plot_label, y=plot_values, fill=plot_label)) +

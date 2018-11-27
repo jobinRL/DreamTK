@@ -175,8 +175,6 @@ server <- function( input, output, session ){
 					   progress$inc(1/n, detail = "Importing Sheds info.");
                        dtk.import$obj$loadShedData();
 					   
-					   #print(dtk.import$obj$getCpdatInfo());
-					   #print(dtk.import$obj$getShedsInfo());
                        
                        #update available search autocomplete list from database
                        updateSearchAutocomplete(dtk.import$obj, chem_autocomplete);
@@ -1208,7 +1206,7 @@ server <- function( input, output, session ){
                    selector = "#ui_ber_plots", immediate = TRUE
                  )
 				 
-				 uilist <- c("ui_stats_ber");
+				uilist <- c("ui_stats_ber");
 							 
 				clearTabUI( input, output, session, 
                                      uilist );
@@ -1219,21 +1217,50 @@ server <- function( input, output, session ){
                    progress$close();
                  });
                  
+				 
+				 
+				 
                  n <- 2; #number of progress bar updates
                  progress$set(message = "", value = 0);
                  progress$inc(1/n, detail = "Building BER table."); 
 				 
+				 #depending on options selection the list is in casn or name format, obtain chemicals accordingly
+                 if(input$radio_listtype == "casn"){
+                   caslist <- input$select_chemical_ber;
+                   chemicals <- chem_manager$getListOfChemicals(caslist);
+                 } else if (input$radio_listtype == "name"){
+                   namelist <- input$select_chemical_ber;
+                   chemicals <- chem_manager$getListOfChemicalsByName(namelist);
+                 }
+				 
 				 BERAnalysis = Class.Analysis.BERAnalysis$new();
-
                  BERAnalysis$BERData$buildBERStatsTable(dtk.import$obj$getCpdatInfo() ,dtk.import$obj$getShedsInfo(),input$select_chemical_ber, label_by = input$radio_listtype );
+				 BERAnalysis$basicData$buildBasicStatsTable(chemicals);
+				 
 				 
 				 if(!BERAnalysis$BERData$BERStatsDataExists()){
 				   logwarn("Please select at least 1 valid chemical");
                    showNotification("Please select at least 1 valid chemical", type = "error", duration = 5);
                    return (NULL);
 				 }
+				  if(input$radio_listtype == "casn"){
+                   tmp = BERAnalysis$basicData$getHitlessChemInfoByCasn();
+				   if(length(tmp)>0){
+						showNotification(paste0(paste(tmp, collapse=", "),  " do not have any data for AC50 values."), type="warning", duration=length(tmp) + 5);
+				   
+				   }
+                 } else if (input$radio_listtype == "name"){
+                   tmp = BERAnalysis$basicData$getHitlessChemInfoByName();
+				   if(length(tmp)>0){
+						showNotification(paste0(paste(tmp, collapse=", "), " do not have any data for AC50 values."), type="warning", duration= length(tmp) + 5); #displaying this for 1 extra second per chemical
+				   
+				   }
+                 }
+				 
+				 
 				BERAnalysis$BERData$computeBER();
-                   
+                BERAnalysis$plotBER();  
+				BERAnalysis$plotBERvsAC50();
                  progress$inc(1/n, detail = "Plotting BER results.");
                  createBERUI( input, output, session, BERAnalysis,
                             id = "ui_ber_plots" );

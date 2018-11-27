@@ -428,5 +428,10 @@ select products_id from cpdatdreamtk.ingredients2
 where product_use_category in ('personal care: nail products; other|spray'  , 'personal care: nail products')
 group by products_id;
 
+select distinct(casrn) from cpdatdreamtk.ingredients2
+INTO OUTFILE '../temp2.csv'
+FIELDS TERMINATED BY ' '
+LINES TERMINATED BY ''; 52 have values that are in oed.
+
 #4 chemicals have some amount of meaningful data.
 */
