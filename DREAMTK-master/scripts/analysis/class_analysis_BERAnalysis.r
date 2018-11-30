@@ -28,18 +28,15 @@ Class.Analysis.BERAnalysis <- R6Class("Class.Analysis.BERAnalysis",
 		self$BERData = Class.Analysis.BERData$new(); #Done here because it will be shared across all instances of the object otherwise.
 		self$basicData <- Class.Analysis.Data$new(  ); #Done here because it will be shared across all instances of the object otherwise.
 	},
-    getBERData = function(){
-		return (self$BERData);
-	},
     #finalizer
     finalize = function() {
     },
 	
 	
 	
-	#Basic Analysis Region
+	#BER Analysis Region
 	
-
+	#computes the Agregated table for BER analysis
     computerMeanTableBER = function(){
       if (self$BERData$calcBERStatsDataExists() && self$basicData$basicStatsDataExists()) {
 		private$tblMeanBER = tribble(~casn,~name,~average_of_oral_consumer_products_exposure, ~min_ac50_over_oral_consumer_products_exposure, ~mean_ac50_over_oral_consumer_products_exposure);
@@ -74,7 +71,7 @@ Class.Analysis.BERAnalysis <- R6Class("Class.Analysis.BERAnalysis",
 		invisible(private$tblMeanBER);
      }   
     },
-	
+	#plots the box chart comparing the values of the oral exposure vs the AC50 of chemicals
 	plotBERvsAc50 = function( label_by = "casn"){
       if (self$BERData$calcBERStatsDataExists() && self$basicData$basicStatsDataExists()) {
 		BER_data = self$BERData$getCalcBERStatsTable();
@@ -102,7 +99,7 @@ Class.Analysis.BERAnalysis <- R6Class("Class.Analysis.BERAnalysis",
      }   
     },
 	
-	
+	#plots the BER box chart
     plotBER = function( label_by = "casn" ){
       if (self$BERData$calcBERStatsDataExists() && self$basicData$basicStatsDataExists()) {
 		tbl = tribble(~casn,~name,~product_use_category, ~average_of_oral_BER);

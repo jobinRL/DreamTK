@@ -1,6 +1,6 @@
 
 
-# Basic statistical data  --------------------------------------------
+# BER statistical data  --------------------------------------------
 
 
 #v0.7
@@ -49,7 +49,7 @@ Class.Analysis.BERData <- R6Class("Class.Analysis.BERData",
 	
  
     
-    #target family counts
+    #computes the exposure quantities.
     computeBER = function(){
       
 		  chemical_casn_list <- unique(private$BER_stat_tbl[["casn"]]);
