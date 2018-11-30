@@ -49,8 +49,7 @@ sidebar <- dashboardSidebar(
                                          "RData: DreamTKv0.7.RData (based on httk-1.7, tcpl-v2)" = "rdata") ),
              uiOutput(outputId="ui_database_status")
              ), 
-             id="li_quickoptions" ),
-	menuItemAddId( menuItem("Bug Report", tabName = "bug", icon = icon("bug")), id="bug" )
+             id="li_quickoptions" )
   ))
 );
 
@@ -279,6 +278,7 @@ body <- dashboardBody(
                                                         "Hierarchical cluster heatmap of Assay Endpoint activities" = "assayhm",
                                                         "Ac50 vs ScalarTop" = "scalartop_ac50",
                                                         "OED vs ScalarTop" = "scalartop_oed",
+														"Burst Assay vs Not Burst Assay" = "ac50_box",
                                                         "Chemical ToxPI Plots (Individual)" = "toxpi",
                                                         "Chemical ToxPI Plots (Cytotoxicity)" = "toxpi2",
                                                         "Chemical ToxPI Plots (Grouped)" = "toxpigroup"),
@@ -343,7 +343,7 @@ body <- dashboardBody(
     ),
 	
 	tabItem(tabName = "bertab",
-            h3("Biological Exposure Rate Analysis"),
+            h3("Biological Exposure Ratio Analysis"),
             #chemical selection panel
             fluidRow(
               box(status = "primary", title = "Select chemicals and desired analysis", collapsible = TRUE, width = 6,
@@ -373,14 +373,14 @@ body <- dashboardBody(
               ),
 			  box(status = "primary", title = "Extra Information and Assumptions", collapsible = TRUE, width = 6, height = 250,
 					p("The calculations are based on the", a( href = "https://pubs.acs.org/doi/10.1021/es502513w", "SHEDS-HT", style = "color: blue;", target = "_blank", rel = "noopener noreferrer"), " exposure model."),
-					h4("Units"),
-					tags$ul(tags$li("All measurements shown are in ug.")),
 					h4("Assumptions"),
 					tags$ul(tags$li("Physical activity index  =  1.75"),
 						tags$li("Basal Alveolar Ventilation Rate  =  15.7 m",tags$sup("3"),"/day"),
 						tags$li("Vapor pressure  =  0.876 Pa")
-						)
-					)
+						),
+					
+					h4("Warnings"),
+					tags$ul(tags$li("Ac50 values are used as a surrogate for OED values as the vast majority of chemicals do not have any values for OED.")))
             ),
             fluidRow(
               box(status = "primary", title = "Analysis results", collapsible = TRUE, width = 12,
@@ -404,30 +404,8 @@ body <- dashboardBody(
                        busyIndicator(text="Working..."),
                        uiOutput(outputId="ui_load_status")
             )
-    ),
-#to be removed after closed beta	
-	tabItem(tabName = "bug",
-            
-			h2("Bug Report"),
-			fluidRow( div(id="bugboxid",
-              box(status = "primary", title = "Welcome to Bug Report", collapsible = FALSE, width = 9,
-                  p("As you may not know, I, Gabriel Chausse, am a new worker here. I have done an update and will be restructuring the code. I am testing the software
-						to the best of my abilities. But, I, unfortunately, do not know the exact results of the calculations there. So, because of this and the fact that I, alone, cannot test every function and every chemical,
-						I am asking the kind souls of this closed beta to help out with identifying a few bugs and reporting them to me. Please also send any changes you think would be good to incorporate into dreamtk."),
-				  h4("How to report a bug"),
-
-				  h5("The following will need to be sent to gabriel.chausse@canada.ca."),
-				  tags$ol(tags$li("A short description of the bug or the change you desire including any error message displayed and the chemicals and analysis ran."),
-						  tags$li("Any error message displayed."),
-						  tags$li("The chemicals used for the analysis and the analysis."),
-				          tags$li("A screenshot of what the bug in action looks like."),
-				          tags$li("A short description of what the desired output or result is.")
-						)
-				  )
-				)	
-			)
+    )
 	)
-  )
 );
 
 

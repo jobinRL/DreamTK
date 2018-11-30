@@ -43,39 +43,42 @@ steps_basics <- reactive(tribble(~step, ~element, ~intro,
                                  
                                  10, "#li_mfa", "<h4>MFA tab</h4>
                                                  <p>MFA tab is responsible for running multifactor analysis for given chemical(s).</p>",
+												 
+								 11, "#li_ber", "<h4>BER Analysis tab</h4>
+                                                 <p>BER Analysis tab is responsible for running biological exposure ratio analysis for given chemical(s).</p>",
                                  
-                                 11, "#li_save", "<h4>Save/Load tab</h4>
+                                 12, "#li_save", "<h4>Save/Load tab</h4>
                                                    <p>Save the workspace chemicals for loading later using the Save/Load tab.</p> 
                                                    <p>Loading saved chemicals avoids search and model re-computation.</p>",
                                  
-                                 12, "#li_help", "<h4>Help links</h4>
+                                 13, "#li_help", "<h4>Help links</h4>
                                                   <p>Help facilitates access a variety of help topics and tutorials.</p>",
                                  
-                                 13, "#li_quickoptions", "<h4>Quick options</h4>
+                                 14, "#li_quickoptions", "<h4>Quick options</h4>
                                                            <p>Quick options allows for quick access to chemical display and datatabse options from anywhere within the application.</p>",
                                  
-                                 14, "#shiny-tab-hometab", "<h4>Application body - Home tab</h4>
+                                 15, "#shiny-tab-hometab", "<h4>Application body - Home tab</h4>
                                                            <p>This is the application body where content is displayed.</p>
                                                            <p>Content depends on which sidebar menu item is selected.</p>
                                                            <p>Since Home menu item is selected, the Home tab content is displayed.</p>",
                                  
-                                 15, ".col-sm-6", "<h4>Content box</h4>
+                                 16, ".col-sm-6", "<h4>Content box</h4>
                                                    <p>This is a content box. Such boxes are used to display a variety of information.",
                                  
-                                 16, ".box-tools.pull-right", "<h4>Box minimization</h4>
+                                 17, ".box-tools.pull-right", "<h4>Box minimization</h4>
                                                                <p>Some boxes have a Collapse button to hide the contents. 
                                                                This can help manage the workspace by controlling the display of information.</p>.
                                                                <i class='fa fa-hand-o-right' style='color:blue; font-size:14px'></i>                          
                                                                Try clicking it.",
                                  
-                                 17, "#li_quickoptions", "<h4>Quick Options</h4>
+                                 18, "#li_quickoptions", "<h4>Quick Options</h4>
                                                            <p>This is the Quick Options rollout.</p>
                                                            <i class='fa fa-hand-o-right' style='color:blue; font-size:14px'></i>                          
                                                            Click on it if it is not already expanded.
                                                            <br>
                                                            <p>The rollout allows adjustment of chemical display and available databases.</p>",
                                  
-                                 18, "#li_quickoptions", "<h4>Quick Options</h4>
+                                 19, "#li_quickoptions", "<h4>Quick Options</h4>
                                                            <p><i>Chemical display options</i> control how chemicals are displayed in chemical lists and search fields. 
                                                            Listing can be done by chemical name or CAS registry number.</p>
                                                            <p><i>Database options</i> control the source database. 
@@ -86,7 +89,7 @@ steps_basics <- reactive(tribble(~step, ~element, ~intro,
                                                            provided the application has been configured correctly by the administrator. Use it if other databases are unavailable.
                                                            Keep in mind that if you are not using the application from the web, it may not have the most up-to-date database.",
                                                            
-                                 19, NA, "<h4>Conclusion</h4> 
+                                 20, NA, "<h4>Conclusion</h4> 
                                            <p>This concludes the basics tutorial. Press Done or Esc key on your keyboard to finish.</p>"
 ));
 
@@ -122,30 +125,34 @@ events_basics <- reactive(list("onchange"=I("switch(this._currentStep){
                                                   case 9:
                                                           $('#li_mfa').click();
                                                           break;
-                                                  
-                                                  case 10:
-                                                          $('#li_save').click();
+														  
+												  case 10:
+                                                          $('#li_ber').click();
                                                           break;
                                                   
                                                   case 11:
-                                                          //$('#li_help').click();
+                                                          $('#li_save').click();
                                                           break;
                                                   
                                                   case 12:
-                                                          //$('#li_quickoptions').click();
+                                                          //$('#li_help').click();
                                                           break;
                                                   
                                                   case 13:
+                                                          //$('#li_quickoptions').click();
+                                                          break;
+                                                  
+                                                  case 14:
                                                           $('#li_home').click();
                                                           break;
                                                   
-                                                  case 16:
+                                                  case 17:
                                                           if ($('#li_quickoptions').parent().children('ul').attr('class') == 'treeview-menu menu-open'){
                                                               $('#li_quickoptions').click();
                                                           };
                                                           break;
                                                   
-                                                  case 17:
+                                                  case 18:
                                                           if ($('#li_quickoptions').parent().children('ul').attr('class') == 'treeview-menu'){
                                                               $('#li_quickoptions').click();
                                                           };
@@ -516,20 +523,33 @@ events_basics <- reactive(list("onchange"=I("switch(this._currentStep){
                                      20, "#shiny-tab-analysistab > div:nth-child(3) > div > div", "<h4>Analysis plots.</h4> 
                                                                <p>Some plots are not interactive. For example these ToxPI plots.</p>
                                                                <p>These plots use custom plotting routines which are not provided with interactive plotting libraries.</p>",
-                                     
-                                     21, "#shiny-tab-mfatab", "<h4>Multiple Factor Analysis tab.</h4> 
-                                                                  <p>This is the MFA tab which performs Multiple Factor Analysis on the selected chemicals.</p>
+                                     21, "#shiny-tab-bertab", "<h4>Biological Exposure Ratio tab.</h4> 
+                                                                  <p>This is the BER tab which performs Biological Exposure Ratio Analysis on the selected chemicals.</p>
                                                                   <p>The control elements of this tab are similar to the Analysis tab.</p>",
                                      
-                                     22, "#mfa_selectcontrol", "<h4>Chemical selection.</h4> 
+                                     22, "#ber_selectcontrol", "<h4>Chemical selection.</h4> 
                                                                   <p>chemical selection operates in exactly the same way as Analysis tab.</p>
                                                                   <i class='fa fa-hand-o-right' style='color:blue; font-size:14px'></i>
                                                                   <i>Select all</i> chemicals, then <i>Run MFA</i>.",
                                      
-                                     23, "#shiny-tab-mfatab > div:nth-child(3) > div > div", "<h4>MFA results.</h4> 
+                                     23, "#shiny-tab-bertab > div:nth-child(3) > div > div", "<h4>MFA results.</h4> 
+                                                                  <p>BER results appear in the Analysis results box.</p>",
+									 
+									 
+									 
+                                     24, "#shiny-tab-mfatab", "<h4>Multiple Factor Analysis tab.</h4> 
+                                                                  <p>This is the MFA tab which performs Multiple Factor Analysis on the selected chemicals.</p>
+                                                                  <p>The control elements of this tab are similar to the Analysis tab.</p>",
+                                     
+                                     25, "#mfa_selectcontrol", "<h4>Chemical selection.</h4> 
+                                                                  <p>chemical selection operates in exactly the same way as Analysis tab.</p>
+                                                                  <i class='fa fa-hand-o-right' style='color:blue; font-size:14px'></i>
+                                                                  <i>Select all</i> chemicals, then <i>Run MFA</i>.",
+                                     
+                                     26, "#shiny-tab-mfatab > div:nth-child(3) > div > div", "<h4>MFA results.</h4> 
                                                                   <p>MFA results appear in the Analysis results box. These plots are non-interactive as well since an R library script generates them.</p>",
                                      
-                                     24, NA, "<h4>Conclusion.</h4>
+                                     27, NA, "<h4>Conclusion.</h4>
                                               <p>This concludes the Analysis tutorial. Press Done or Esc key on your keyboard to finish.</p>"
   
   ));
@@ -558,7 +578,11 @@ events_basics <- reactive(list("onchange"=I("switch(this._currentStep){
                                                             $('#li_analysis').click();
                                                             break;
 
-                                                    case 20:
+															
+													case 20:
+                                                            $('#li_ber').click();
+                                                            break;
+                                                    case 23:
                                                             $('#li_mfa').click();
                                                             break;
 

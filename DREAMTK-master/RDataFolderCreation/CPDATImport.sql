@@ -411,7 +411,7 @@ INTO OUTFILE '../shedsinfo_data.csv'
 FIELDS TERMINATED BY '	'
 LINES TERMINATED BY '\n';
 
-/*select * from cpdatdreamtk.ingredients2
+/*select casrn,product_use_category from cpdatdreamtk.ingredients2
 #where product_use_category is null and minimum_reported_weight_fraction is NULL and minimum_reported_weight_fraction is NULL and  maximum_reported_weight_fraction is NULL and predicted_weight_fraction_mean is NULL and predicted_weight_fraction_05th_percentile is NULL and predicted_weight_fraction_50th_percentile is NULL
 where casrn in ("99-57-0","404-86-4","61702-44-1","53-43-0","3564-09-8","148-79-8",
 "97-18-7","26538-44-3","73-31-4","500-38-9","1570-64-5","153-61-7","116-38-1","3599-32-4",
@@ -421,8 +421,9 @@ where casrn in ("99-57-0","404-86-4","61702-44-1","53-43-0","3564-09-8","148-79-
 "51781-21-6","73231-34-2","137-88-2","93106-60-6","4991-65-5","611-75-6","25999-20-6","102-29-4","74610-55-2","108050-54-0","303-98-0",
 "1641-17-4","102-98-7","90274-24-1","306-94-5","21245-01-2","1315-04-4","10161-34-9","55134-13-9","84366-81-4","101831-37-2","2748-88-1",
 "18507-89-6","2040-10-0","3697-42-5","2224-49-9","85-19-8","2919-66-6","120066-54-8","530-43-8","1778-02-5","54182-58-0","60-31-1","117704-25-3","84878-61-5","2835-99-6","719-59-5","1322-14-1")
-and (product_use_category is not NULL) and not ( minimum_reported_weight_fraction is  NULL and maximum_reported_weight_fraction is NULL and predicted_weight_fraction_mean is NULL and predicted_weight_fraction_05th_percentile is NULL and predicted_weight_fraction_50th_percentile is NULL)
-group by casrn
+INTO OUTFILE '../LeviCPDAT2.csv'
+FIELDS TERMINATED BY '	'
+LINES TERMINATED BY '\n';
 
 select products_id from cpdatdreamtk.ingredients2
 where product_use_category in ('personal care: nail products; other|spray'  , 'personal care: nail products')

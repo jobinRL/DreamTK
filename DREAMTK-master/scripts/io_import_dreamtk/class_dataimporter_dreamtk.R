@@ -23,7 +23,7 @@ tableinfo <- list(
                          "intended_target_family", "intended_target_family_sub", "gene_name", "gene_symbol"),
   
   ac50tablename = "ac50_data",
-  ac50tablevars = list ("casn", "aeid", "ac50", "ac_top", "ac_cutoff", "hitc"),
+  ac50tablevars = list ("casn", "aeid", "ac50", "ac_top", "ac_cutoff", "hitc","burst_assay"),
   
   physiologytablename = "physiology_data",
   physiologytablevars = list ("parameter", "species", "value", "units", "reference"),

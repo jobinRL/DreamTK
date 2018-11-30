@@ -47,12 +47,11 @@ Class.Analysis.Data <- R6Class("Class.Analysis.Data",
 	  
 	  
       basic_stat_tbl <- tribble(~casn, ~aeid, ~assay_component_endpoint_name, ~intended_target_family,
-                                ~intended_target_family_sub, ~ac50, ~ac_cutoff, ~ac_top, ~name, ~above_cutoff, ~cytotoxicity_um, ~cytotoxic, ~hitc, ~gene_name, ~gene_symbol);
+                                ~intended_target_family_sub, ~ac50, ~ac_cutoff, ~ac_top, ~name, ~above_cutoff, ~cytotoxicity_um, ~cytotoxic, ~hitc, ~gene_name, ~gene_symbol, ~burst_assay);
       for (chem in chemicals){
         if (length(chem$assay_info$aeid)> 0){
           assaydata <- select(chem$assay_info, casn, aeid, assay_component_endpoint_name, 
-                              intended_target_family, intended_target_family_sub, ac50, ac_cutoff, ac_top, gene_name,gene_symbol, hitc) %>% filter(hitc == 1); #this is the only spot we need to filter on. for stats. unless....
-		  
+                              intended_target_family, intended_target_family_sub, ac50, ac_cutoff, ac_top, gene_name,gene_symbol, hitc, burst_assay) %>% filter(hitc == 1); #this is the only spot we need to filter on. for stats. unless....
 		  if(!analyse_background){
 			assaydata  <-  subset(assaydata, intended_target_family != "background measurement");
 		  }

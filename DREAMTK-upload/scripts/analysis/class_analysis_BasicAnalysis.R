@@ -18,6 +18,7 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
     pltavgac50 = NULL, #target family average ac50 plot,
     pltst_ac50 = NULL, #ac50 vs scalar top scatterplot,
     pltst_oed = NULL, #oed vs scalar top scatterplot,
+	pltAc50Box = NULL, #ac50 box chart,
 	
 	#toxpi Analysis Variables
 	target_family_ac_list = NULL,
@@ -129,7 +130,7 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
                                       text = ~paste( "</br> Target family: ", intended_target_family,
                                                      "</br> Min ac50: ", min_ac50)) %>% 
           
-          layout(title = "Min AC50 vs Target Family",
+          layout(title = "Min Ac50 vs Target Family",
                  xaxis = list(title = "Minimum ac50 (uM)",
                               titlefont = list(size = 14)),
                  yaxis = list(title = "Target Family",
@@ -173,7 +174,7 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
                                       text = ~paste( "</br> Target family: ", intended_target_family,
                                                      "</br> Avg ac50: ", avg_ac50)) %>% 
           
-          layout(title = "Average AC50 vs Target Family",
+          layout(title = "Average Ac50 vs Target Family",
                  xaxis = list(title = "Average ac50 (uM)",
                               titlefont = list(size = 14)),
                  yaxis = list(title = "Target Family",
@@ -237,7 +238,7 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
                                          "</br> Ac50 (uM): ", signif(10^ac50, digits=5),
                                          "</br> Scalar top: ", signif(scalar_top, digits=5))  ) %>% 
                           
-          layout(title = "Log AC50 vs Log scalar top",
+          layout(title = "Log Ac50 vs Log scalar top",
                  xaxis = list(title = "Log scalar top",
                               titlefont = list(size = 14),
                               type = "log"),
@@ -307,6 +308,38 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
       
       return ( private$pltst_oed );
     },
+	#box plot of the Ac50 values by chemical.
+	plotAc50Box = function( label_by = "casn"){
+      if (self$basicData$basicStatsDataExists()) {
+	
+		basic_data_burst = filter(self$basicData$getBasicStatsTable(), burst_assay == 1);
+		basic_data_burst_no = filter(self$basicData$getBasicStatsTable(), burst_assay == 0);
+		if(label_by == "casn"){
+			private$pltAc50Box <- plot_ly() %>%
+			  add_trace(data = basic_data_burst, x = ~casn, y = ~signif(ac50, digits = 5), type = 'box', name = 'Burst Assay') %>%
+			  add_trace(data = basic_data_burst_no, x = ~casn, y = ~signif(ac50, digits = 5), type = 'box', name = 'Not Burst Assay') %>%
+			  layout(title = 'Burst Assay Analysis Ac50 Box Chart',
+					 xaxis = list(title = ""),
+					 yaxis = list(title = ""));
+	
+		}else{
+			private$pltAc50Box <- plot_ly() %>%
+				add_trace(data = basic_data_burst, x = ~name, y = ~signif(ac50, digits = 5), type = 'box', name = 'Burst Assay') %>%
+				add_trace(data = basic_data_burst_no, x = ~name, y = ~signif(ac50, digits = 5), type = 'box', name = 'Not Burst Assay') %>%
+			  layout(title = 'Burst Assay Analysis Ac50 Box Chart',
+					 xaxis = list(title = ""),
+					 yaxis = list(title = ""));
+		
+		}
+		
+		invisible(private$pltAc50Box);
+     }   
+    },
+	
+	getPlotAc50Box = function(){
+		return (private$pltAc50Box);
+	},
+
 	
 	getTargetFamilyCountsPlot = function (){
       return (private$plttfc);
@@ -693,7 +726,7 @@ Class.Analysis.BasicAnalysis <- R6Class("Class.Analysis.BasicAnalysis",
 		   plotdata$val_ac <- if(is.nan(plotdata$val_ac)) 0 else plotdata$val_ac;
 		   plotdata$val_ct <- if(is.nan(plotdata$val_ct)) 0 else plotdata$val_ct;
 		   plotdata$val_tp <- if(is.nan(plotdata$val_tp)) 0 else plotdata$val_tp;
-           plot_label <- c('AC50', 'Cytotoxity', 'Top Response');
+           plot_label <- c('Ac50', 'Cytotoxity', 'Top Response');
            plot_values <- c(plotdata$val_ac, plotdata$val_ct, plotdata$val_tp);
            colorpalette <- rainbow(3);
            #gabe

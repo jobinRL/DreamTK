@@ -78,10 +78,10 @@ chem_data = chemical.data[chemical.data$casn %in% casn_list,]
 for (i in casn_list) {
 # Retrieves chemical data for a single chemical
 i_data = ac50.data[ac50.data$casn==i,]
-# Calculates median values for top asymptote and AC50
+# Calculates median values for top asymptote and Ac50
 chem_data$median_top_asymptote[chem_data$casn==i] <- median(i_data$ac_top)
 chem_data$median_ac50[chem_data$casn==i] <- median_ac50 <- median(i_data$ac50)
-# Finds the AEID associated to the median AC50
+# Finds the AEID associated to the median Ac50
 target_aeid = i_data$aeid[which.min(abs(i_data$ac50 - median_ac50))]
 # Finds the targets of the associated AEID
 chem_data$median_target_family_from_ac50[chem_data$casn==i] <- assay.data$intended_target_family[assay.data$aeid==target_aeid]
@@ -99,8 +99,8 @@ chem_data=chemical_table_extend(casn_list=icl$casn)
 View(chem_data)
 hist(chem_data$median_ac50)
 table(chem_data$median_ac50)
-hist(chem_data$median_ac50, title="Histogram of Median AC50")
-hist(chem_data$median_ac50, main ="Histogram of Median AC50")
+hist(chem_data$median_ac50, title="Histogram of Median Ac50")
+hist(chem_data$median_ac50, main ="Histogram of Median Ac50")
 # Load the required RData tables
 load("C:/Users/SQL-server/Documents/R/win-library/3.4/Dream.TK/data/ac50.data.RData")
 load("C:/Users/SQL-server/Documents/R/win-library/3.4/Dream.TK/data/assay.data.RData")
@@ -110,9 +110,9 @@ transposed_chem_data = data.frame(chem=NA)
 # Retrieves a random list of chemicals
 # Should be changed to whatever list of chemicals you wish to analyze
 casn_list = icl$casn
-# Retrieves AC50 data on chemicals in CASN list
+# Retrieves Ac50 data on chemicals in CASN list
 chemdata = ac50.data[ac50.data$casn %in% casn_list,]
-# Merges AC50 data and assay data, retaining set columns
+# Merges Ac50 data and assay data, retaining set columns
 chemdata = merge(chemdata,assay.data)[c("aeid","casn","ac50","ac_top","ac_cutoff","biological_process_target","intended_target_family")]
 var_of_interest = biological_process_target
 var_of_interest = paste0("chem_data$","biological_process_target")
@@ -129,7 +129,7 @@ View(transposed_chem_data)
 transposed_chem_data = transposed_chem_data[!is.na(names(transposed_chem_data))]
 transposed_chem_data = transposed_chem_data[,-match("NA",names(transposed_chem_data))]
 transposed_chem_data = transposed_chem_data[,-match("casn",names(transposed_chem_data))]
-# Merges AC50 data and assay data, retaining set columns
+# Merges Ac50 data and assay data, retaining set columns
 chemdata = merge(chemdata,assay.data)[c("aeid","casn","ac50","ac_top","ac_cutoff","biological_process_target","intended_target_family")]
 var_of_interest = paste0("chem_data$","biological_process_target")
 # Creates a column for each biological process target
@@ -140,7 +140,7 @@ transposed_chem_data = data.frame(transposed_chem_data, i=NA)
 colnames(transposed_chem_data) <- c("casn",unique(var_of_interest))
 View(transposed_chem_data)
 unique(var_of_interest)
-# Merges AC50 data and assay data, retaining set columns
+# Merges Ac50 data and assay data, retaining set columns
 chemdata = merge(chemdata,assay.data)[c("aeid","casn","ac50","ac_top","ac_cutoff","biological_process_target","intended_target_family")]
 # Creates a column for each biological process target
 for (i in !is.na(unique(chemdata$intended_target_family))){
@@ -411,10 +411,10 @@ chem_data = chemical.data[chemical.data$casn %in% casn_list,]
 for (i in casn_list) {
 # Retrieves chemical data for a single chemical
 i_data = ac50.data[ac50.data$casn==i,]
-# Calculates median values for top asymptote and AC50
+# Calculates median values for top asymptote and Ac50
 chem_data$min_top_asymptote[chem_data$casn==i] <- min(i_data$ac_top)
 chem_data$min_ac50[chem_data$casn==i] <- min_ac50 <- min(i_data$ac50[i_data$ac50>0])
-# Finds the AEID associated to the median AC50
+# Finds the AEID associated to the median Ac50
 target_aeid = i_data$aeid[which.min(abs(i_data$ac50 - min_ac50))]
 # Finds the targets of the associated AEID
 chem_data$min_target_family_from_ac50[chem_data$casn==i] <- assay.data$intended_target_family[assay.data$aeid==target_aeid]

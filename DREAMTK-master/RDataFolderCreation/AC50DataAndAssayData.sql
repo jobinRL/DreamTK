@@ -21,7 +21,7 @@ DROP TABLE IF EXISTS testgab.AssayHit;
 CREATE TABLE testgab.AssayHit AS       
 	(
 
-    SELECT mc5.hitc, chemicalTable.casn, mc4.aeid, mc5.modl_ga, mc5.modl_tp, mc5.modl_acc, ace.burst_assay, ace.assay_component_endpoint_name
+    SELECT mc5.hitc, chemicalTable.casn, mc4.aeid, mc5.modl_ga, mc5.modl_tp, mc5.modl_acc, ace.assay_component_endpoint_name
 		FROM  testgab.test123 AS mc5 NATURAL JOIN invitrodb_v3.mc4 AS mc4 NATURAL JOIN invitrodb_v3.sample AS sampleTable NATURAL JOIN invitrodb_v3.chemical AS chemicalTable NATURAL JOIN invitrodb_v3.assay_component_endpoint AS ace
 
 );
@@ -58,10 +58,10 @@ INSERT IGNORE INTO testgab.temp_table SELECT aeid, casn, hitc, min(modl_ga) as m
 INSERT IGNORE INTO testgab.temp_table SELECT aeid, casn, hitc, min(modl_ga) as modl_ga from testgab.assayhitwcounts where aeid != 0; #this line errors out but whatever.
 #there are duplicates but they seem to be the same, to make this script better you could remove them... but the group by already does the trick for this case.
 #https://stackoverflow.com/questions/4590385/how-do-i-handle-null-values-in-a-mysql-select-outfile-statement-in-conjuncti
-SELECT "casn","aeid","hitc", "ac50", "ac_top","ac_cutoff"
+SELECT "casn","aeid","hitc", "ac50", "ac_top","ac_cutoff","burst_assay"
 UNION ALL
-SELECT  tmp.CASN, tmp.aeid, tmp.hitc, coalesce(tmp.modl_ga, "") , coalesce(ah.modl_tp, "") , coalesce(ah.modl_acc, "") FROM testgab.temp_table as tmp, testgab.assayhit as ah
-WHERE tmp.casn = ah.casn and tmp.aeid = ah.aeid and ((tmp.modl_ga = ah.modl_ga) OR (tmp.modl_ga IS NULL and ah.modl_ga IS NULL))
+SELECT  tmp.CASN, tmp.aeid, tmp.hitc, coalesce(tmp.modl_ga, "") , coalesce(ah.modl_tp, "") , coalesce(ah.modl_acc, ""), ace.burst_assay FROM testgab.temp_table as tmp, testgab.assayhit as ah, invitrodb_v3.assay_component_endpoint as ace
+WHERE tmp.casn = ah.casn and tmp.aeid = ah.aeid and ace.aeid = ah.aeid and ((tmp.modl_ga = ah.modl_ga) OR (tmp.modl_ga IS NULL and ah.modl_ga IS NULL))
 group by casn, aeid
 INTO OUTFILE '../ac50_data.csv'
 FIELDS TERMINATED BY ','

@@ -4,8 +4,8 @@
 
 # Version number and revision
 app.version.major <- "0";
-app.version.minor <- "7";
-app.version.revision <- "9";
+app.version.minor <- "8";
+app.version.revision <- "0";
 
 #num columns 
 num_plot_cols <- 1;
@@ -73,7 +73,7 @@ computeAnalyses = function ( input, output, session,
                              oedmodelname, 
                              progress, n ){
 							 
-	if(any(c("tfcounts","scalartop_ac50","scalartop_oed","tfhm", "assayhm", "toxpi", "toxpi2",  "toxpigroup") %in% stat_choices)){
+	if(any(c("tfcounts","scalartop_ac50","scalartop_oed","ac50_box","tfhm", "assayhm", "toxpi", "toxpi2",  "toxpigroup") %in% stat_choices)){
 		progress$inc(1/n, detail = "Building main analysis tables.");
 		loginfo("Stats: Building main analysis tables.");
 		basicAnalysis$basicData$buildBasicStatsTable(chemicals, input$analyse_background);
@@ -98,6 +98,7 @@ computeAnalyses = function ( input, output, session,
 		basicAnalysis$computeTargetFamilyMatrix();
 		basicAnalysis$computeAssayEndpointMatrix();
 	}
+	
 	if (any(c("toxpi", "toxpi2", "toxpigroup") %in% stat_choices)) {
 		progress$inc(1/n, detail = "Building ToxPI analysis tables.");
 		loginfo("Stats: Building ToxPI analysis tables.");
@@ -768,6 +769,36 @@ createScalarTopUI = function( input, output, session,
 	})
 	
 }
+#Analysis tab - create ac50 box output ui
+createAc50BoxUI = function(input,output,session,basicAnalysis,id){
+	insertUI(
+		selector = "#ui_stats",
+		where = "beforeEnd",
+		ui = fluidRow(id = id,
+
+							if( basicAnalysis$basicData$basicStatsDataExists()){
+								box(status = "primary", title = "Burst Assay Analysis", collapsible = TRUE, width = 12,
+							
+									fluidRow(
+										column(10, offset = 1,
+										plotlyOutput(outputId = "plot_Ac50_box", height = 800)
+										)
+									)
+								)
+							}else{
+								box(status = "primary", title = "Burst Assay Analysis", collapsible = TRUE, width = 12,
+									column(12, offset = 0,
+										h3("No Ac50 Data available for the chemical(s). No graph to plot.", 
+										id = "plot_Ac50_box", style = "color:red")
+									)
+								)
+							}	
+		)
+	)
+	
+	basicAnalysis$plotAc50Box(label_by = input$radio_listtype);
+	output$plot_Ac50_box <- renderPlotly({basicAnalysis$getPlotAc50Box()});
+}
 
 #Analysis tab - create toxpi output UI
 createToxPIUI = function( input, output, session,
@@ -1069,9 +1100,47 @@ createBERUI = function( input, output, session, BERAnalysis, id ){
     where = "beforeEnd",
 	ui = fluidRow(id = id,
 						if( BERAnalysis$BERData$calcBERStatsDataExists()){
-							box(status = "primary", title = "BER Analysis Table", collapsible = TRUE, width = 12,
+							box(status = "primary", title = "Consumer Products Exposition VS Ac50", collapsible = TRUE, width = 12,
+								dropdownButton(
+									  tags$h3("About plot"),
+									  HTML( 
+										str_c( 
+												"<p><strong>Consumer Products Exposition  BE:</strong>Consumer Products Exposition  BER of a product use category for a chemical is the summation of the direct incidental ingestion, direct aerosol ingestion and direct vapor ingestion. The value is shown in ug/day.</p>",
+												"<p><strong>Ac50:</strong> This value is shown in uM.</p>"
+										)
+									  ),
+									  circle = TRUE, status = "danger", icon = icon("question-circle"), width = "300px",
+									  tooltip = NULL
+								),
+								br(),
 								
-									
+								fluidRow(
+									column(10, offset = 1,
+									plotlyOutput(outputId = "plot_BER_vs_Ac50", height = 800)
+									)
+								)
+							)
+						}else{
+							box(status = "primary", title = "Consumer Products Exposition VS Ac50", collapsible = TRUE, width = 12,
+								column(12, offset = 0,
+									h3("No Consumer Products Exposition Data available for the chemical(s). No graph to plot.", 
+									id = "plot_BER_vs_Ac50", style = "color:red")
+								)
+							)
+						},	
+						br(),
+						if( BERAnalysis$BERData$calcBERStatsDataExists()){
+							box(status = "primary", title = "Consumer Products Exposition Analysis Table", collapsible = TRUE, width = 12,
+								dropdownButton(
+									  tags$h3("About plot"),
+									  HTML( 
+										str_c( "<p>This shows the Consumer Products Exposition values in ug/day for each category of exposure.</p>")
+										),
+
+									  circle = TRUE, status = "danger", icon = icon("question-circle"), witdth = "300px",
+									  tooltip = NULL
+								),
+								br(),
 								column(12, offset = 0,
 									wellPanel(
 										DT::dataTableOutput(outputId = "table_stats_BER")
@@ -1079,22 +1148,53 @@ createBERUI = function( input, output, session, BERAnalysis, id ){
 									)
 								)
 						}else{
-							box(status = "primary", title = "BER Analysis Table", collapsible = TRUE, width = 12,
+							box(status = "primary", title = "BE Analysis Table", collapsible = TRUE, width = 12,
 								column(12, offset = 0,
-									h3("No BER Data available for the chemical(s). No Table to plot.", 
+									h3("No Consumer Products Exposition Data available for the chemical(s). No Table to plot.", 
 									id = "table_stats_BER", style = "color:red")
 								)
 							)
 						},
 						br(),
 						if( BERAnalysis$BERData$calcBERStatsDataExists()){
+							box(status = "primary", title = "BER box chart", collapsible = TRUE, width = 12,
+								dropdownButton(
+									  tags$h3("About plot"),
+									  HTML( 
+										str_c( 
+												"<p><strong>Oral Consumer Products Exposition:</strong> Oral Consumer Products Exposition of a product use category for a chemical is the summation of the direct incidental ingestion, direct aerosol ingestion and direct vapor ingestion.</p>",
+												"<p><strong>Oral BER:</strong> Mean Ac50 of the chemical divided by Oral Consumer Products Exposition</p>"
+										)
+									  ),
+									  circle = TRUE, status = "danger", icon = icon("question-circle"), width = "300px",
+									  tooltip = NULL
+								),
+								br(),
+								
+								fluidRow(
+									column(10, offset = 1,
+									plotlyOutput(outputId = "plot_BER", height = 800)
+									)
+								)
+							)
+						}else{
+							box(status = "primary", title = "BER box chart", collapsible = TRUE, width = 12,
+								column(12, offset = 0,
+									h3("No BER Data available for the chemical(s). No graph to plot.", 
+									id = "plot_BER", style = "color:red")
+								)
+							)
+						},	
+
+						br(),
+						if( BERAnalysis$BERData$calcBERStatsDataExists()){
 							box(status = "primary", title = "BER Agregated Analysis Table", collapsible = TRUE, width = 12,
 								dropdownButton(
 									  tags$h3("About plot"),
 									  HTML( 
-										str_c( "<p>Oral BER of a product use category for a chemical is the summation of the direct incidental ingestion, direct aerosol ingestion and direct vapor ingestion.</p>",
+										str_c( "<p><strong>Oral Consumer Products Exposition:</strong> Oral Consumer Products Exposition of a product use category for a chemical is the summation of the direct incidental ingestion, direct aerosol ingestion and direct vapor ingestion.</p>",
 												"<p><strong>Mean:</strong> This value is calculating by getting the average of all the product categories of each chemical.</p>",
-												"<p><strong>Percentile Value:</strong> The actual Oral BER value closest to the percentile value being calculated.</p>"
+												"<p><strong>Mean and Min over Oral Consumer Products Exposition:</strong> The Ac50 value is divided by the value closest to the 95th percentile of exposure.</p>"
 										)
 									  ),
 									  circle = TRUE, status = "danger", icon = icon("question-circle"), width = "300px",
@@ -1109,16 +1209,19 @@ createBERUI = function( input, output, session, BERAnalysis, id ){
 									)
 								)
 						}else{
-							box(status = "primary", title = "BER Agregated Analysis Table", collapsible = TRUE, width = 12,
+							box(status = "primary", title = "BE Agregated Analysis Table", collapsible = TRUE, width = 12,
 								column(12, offset = 0,
-									h3("No BER Data available for the chemical(s). No Table to plot.", 
+									h3("No BE Data available for the chemical(s). No Table to plot.", 
 									id = "table_stats_mean_BER", style = "color:red")
 								)
 							)
 							
 						}
+
+						
 						
 		)
+		
 	);
 
 	output$table_stats_BER <- DT::renderDataTable(server = FALSE,  {
@@ -1140,4 +1243,6 @@ createBERUI = function( input, output, session, BERAnalysis, id ){
 
 		}
 	);
+	output$plot_BER_vs_Ac50 <- renderPlotly({BERAnalysis$getBERvsAc50plot()});
+	output$plot_BER <- renderPlotly({BERAnalysis$getBERplot()});
 }

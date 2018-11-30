@@ -16,8 +16,7 @@ Class.Analysis.BERAnalysis <- R6Class("Class.Analysis.BERAnalysis",
 	pltBER = NULL,
 	tblBER = NULL,
 	tblMeanBER = NULL,#
-	pltBERvsAC50 = NULL
-	
+	pltBERvsAc50 = NULL
 ),
 
 #public variables and functions
@@ -41,17 +40,17 @@ Class.Analysis.BERAnalysis <- R6Class("Class.Analysis.BERAnalysis",
 	#Basic Analysis Region
 	
 
-    plotBER = function(){
-      if (self$BERData$calcBERStatsDataExists()) {
-		private$tblMeanBER = tribble(~casn,~name,~average_of_oral_BER, ~min_ac50_over_oral_BER, ~mean_ac50_over_oral_BER);
+    computerMeanTableBER = function(){
+      if (self$BERData$calcBERStatsDataExists() && self$basicData$basicStatsDataExists()) {
+		private$tblMeanBER = tribble(~casn,~name,~average_of_oral_consumer_products_exposure, ~min_ac50_over_oral_consumer_products_exposure, ~mean_ac50_over_oral_consumer_products_exposure);
 		#getting our private data
         calc_BER_stat_tbl <- self$BERData$getCalcBERStatsTable();
 		chemical_casn_list <- unique(calc_BER_stat_tbl[["casn"]]);
-		AC50_stat_tbl <- self$basicData$getBasicStatsTable();
+		Ac50_stat_tbl <- self$basicData$getBasicStatsTable();
 		
 		for(chemical_casn in chemical_casn_list){
 			casn_tbl <- filter(calc_BER_stat_tbl, casn == chemical_casn);
-			ac50_tbl <- filter(AC50_stat_tbl, casn == chemical_casn);
+			ac50_tbl <- filter(Ac50_stat_tbl, casn == chemical_casn);
 			avg_mean = mean(casn_tbl$direct_ingestion + casn_tbl$direct_vapor + casn_tbl$direct_aerosol);
 			oral_ber = (casn_tbl$direct_ingestion + casn_tbl$direct_vapor + casn_tbl$direct_aerosol);
 			avg_ac50 = mean(10^ac50_tbl$ac50);
@@ -64,9 +63,9 @@ Class.Analysis.BERAnalysis <- R6Class("Class.Analysis.BERAnalysis",
 			
 			private$tblMeanBER <- add_row(private$tblMeanBER, casn = chemical_casn, 
 						name = as.character(filter(calc_BER_stat_tbl, casn == chemical_casn) %>% select(name) %>% distinct(name)),
-						average_of_oral_BER = avg_mean,
-						min_ac50_over_oral_BER = closest_to_95th / min_ac50,
-						mean_ac50_over_oral_BER = closest_to_95th / avg_ac50
+						average_of_oral_consumer_products_exposure = signif(avg_mean, digits = 5),
+						min_ac50_over_oral_consumer_products_exposure = signif(ifelse(is.nan(min_ac50) || is.infinite(min_ac50),0,min_ac50 / closest_to_95th), digits = 5),
+						mean_ac50_over_oral_consumer_products_exposure = signif(ifelse(is.nan(avg_ac50) || is.infinite(avg_ac50),0,avg_ac50 / closest_to_95th), digits = 5)  
 						);
 				
 			
@@ -76,22 +75,90 @@ Class.Analysis.BERAnalysis <- R6Class("Class.Analysis.BERAnalysis",
      }   
     },
 	
-	plotBERvsAC50 = function(){
+	plotBERvsAc50 = function( label_by = "casn"){
       if (self$BERData$calcBERStatsDataExists() && self$basicData$basicStatsDataExists()) {
 		BER_data = self$BERData$getCalcBERStatsTable();
+		BER_data$oral_ber =BER_data$direct_ingestion + BER_data$direct_vapor + BER_data$direct_aerosol;
 		basic_data = self$basicData$getBasicStatsTable();
-		
+		if(label_by == "casn"){
+			private$pltBERvsAc50 <- plot_ly() %>%
+			  add_trace(data = BER_data, x = ~casn, y = ~signif(log10(oral_ber), digits = 5), type = 'box', name = 'BE',) %>%
+			  add_trace(data = basic_data, x = ~casn, y = ~signif(ac50, digits = 5), type = 'box', name = 'Ac50') %>%
+			  layout(title = 'Log Consumer Product Exposure vs  Log Ac50',
+					 xaxis = list(title = ""),
+					 yaxis = list(title = ""));
 	
-				
+		}else{
+			private$pltBERvsAc50 <- plot_ly() %>%
+			  add_trace(data = BER_data, x = ~name, y = ~signif(log10(oral_ber), digits = 5), type = 'box', name = 'BE') %>%
+			  add_trace(data = basic_data, x = ~name, y =~signif(ac50, digits = 5), type = 'box', name = 'Ac50') %>%
+			  layout(title = 'Log Consumer Product Exposure vs Log Ac50',
+					 xaxis = list(title = ""),
+					 yaxis = list(title = "Log 10"));
 		
-		invisible(private$tblMeanBER);
+		}
+		
+		invisible(private$pltBERvsAc50);
+     }   
+    },
+	
+	
+    plotBER = function( label_by = "casn" ){
+      if (self$BERData$calcBERStatsDataExists() && self$basicData$basicStatsDataExists()) {
+		tbl = tribble(~casn,~name,~product_use_category, ~average_of_oral_BER);
+		#getting our private data
+        calc_BER_stat_tbl <- self$BERData$getCalcBERStatsTable();
+		chemical_casn_list <- unique(calc_BER_stat_tbl[["casn"]]);
+		Ac50_stat_tbl <- self$basicData$getBasicStatsTable();
+		
+		for(chemical_casn in chemical_casn_list){
+			
+			ac50_tbl <- filter(Ac50_stat_tbl, casn == chemical_casn);
+			
+			avg_ac50 = mean(10^ac50_tbl$ac50);
+			casn_tbl <- filter(calc_BER_stat_tbl, casn == chemical_casn);
+			if(!(is.nan(avg_ac50) || is.infinite(avg_ac50))){
+				for ( puc in casn_tbl$product_use_category ){
+					puc_tbl <- filter(casn_tbl, product_use_category == puc);
+					oral_ber = (casn_tbl$direct_ingestion + casn_tbl$direct_vapor + casn_tbl$direct_aerosol);
+					tbl <- add_row(tbl, casn = chemical_casn, 
+								name = as.character(filter(calc_BER_stat_tbl, casn == chemical_casn) %>% select(name) %>% distinct(name)),
+								product_use_category = puc,
+								average_of_oral_BER = signif(avg_ac50/oral_ber, digits = 5),
+								);
+					
+				}
+			}
+		}
+		if(label_by == "casn"){
+			private$pltBER <- plot_ly() %>%
+			  add_trace(data = tbl, x = ~casn, y = ~signif(log10(average_of_oral_BER), digits = 5), type = 'box') %>%
+			  layout(title = 'Log BER',
+					 xaxis = list(title = ""),
+					 yaxis = list(title = ""));
+	
+		}else{
+			private$pltBER <- plot_ly() %>%
+			  add_trace(data = tbl, x = ~name, y = ~signif(log10(average_of_oral_BER), digits = 5), type = 'box') %>%
+			  layout(title = 'Log BER',
+					 xaxis = list(title = ""),
+					 yaxis = list(title = ""));
+		
+		}
+		
+		invisible(private$pltBER);
      }   
     },
 
 	getMeanBERTable = function (){
-      return (private$tblMeanBER);
-    }
- 
+		return (private$tblMeanBER);
+    },
+	getBERvsAc50plot = function(){
+		return (private$pltBERvsAc50);
+	},
+	getBERplot = function(){
+		return (private$pltBER);
+	}
  
 	)
 )

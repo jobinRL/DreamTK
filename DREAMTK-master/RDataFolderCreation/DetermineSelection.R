@@ -23,10 +23,10 @@ p<- plot_ly(DeterminingSelection, x = ~aic, y = ~ac50, alpha = 0.5,
                                              "</br> Ac50 (uM): ", signif(ac50, digits=5),
                                              "</br> AIC: ", signif(aic, digits=5))  ) %>% 
   
-  layout(title = "AIC VS AC50",
+  layout(title = "AIC VS Ac50",
          xaxis = list(title = "AIC",
                       titlefont = list(size = 14)),
-         yaxis = list(title = "AC50",
+         yaxis = list(title = "Ac50",
                       titlefont = list(size = 14)),
          showlegend = TRUE,
          legend = list(orientation = "h"))
@@ -44,10 +44,10 @@ p2<- plot_ly(DeterminingSelection, x = ~prob, y = ~ac50, alpha = 0.5,
                            "</br> Ac50 (uM): ", signif(ac50, digits=5),
                            "</br> PROB: ", signif(prob, digits=5))  ) %>% 
   
-  layout(title = "PROB VS AC50",
+  layout(title = "PROB VS Ac50",
          xaxis = list(title = "PROB",
                       titlefont = list(size = 14)),
-         yaxis = list(title = "AC50",
+         yaxis = list(title = "Ac50",
                       titlefont = list(size = 14)),
          showlegend = TRUE,
          legend = list(orientation = "h"))

@@ -943,6 +943,7 @@ server <- function( input, output, session ){
 									"Hierarchical cluster heatmap of Assay Endpoint activities" = "assayhm",
 									"Ac50 vs ScalarTop" = "scalartop_ac50",
 									"OED vs ScalarTop" = "scalartop_oed",
+									"Burst Assay vs Not Burst Assay" = "ac50_box",
 									"Chemical ToxPI Plots (Individual)" = "toxpi",
 									"Chemical ToxPI Plots (Cytotoxicity)" = "toxpi2",
 									"Chemical ToxPI Plots (Grouped)" = "toxpigroup");
@@ -977,7 +978,7 @@ server <- function( input, output, session ){
 			  
                  #clear dynamic UI stats output if exists, uses jquery selector notation with # in front of ui element id
                  uilist <- c("#ui_stats_tfcounts", "#ui_stats_tfhm", "#ui_stats_assayhm",
-                             "#ui_stats_scalartop", "#ui_stats_toxpi", "#ui_stats_toxpi2", "#ui_stats_toxpi_group");
+                             "#ui_stats_scalartop", "#ui_stats_toxpi", "#ui_stats_toxpi2", "#ui_stats_toxpi_group", "#ui_stats_Ac50box");
 							 
 				clearTabUI( input, output, session, 
                                      uilist );
@@ -998,7 +999,7 @@ server <- function( input, output, session ){
                      progress$close();
                    });
                    
-                   n <- 12; #number of progress bar updates
+                   n <- 13; #number of progress bar updates
                    progress$set(message = "", value = 0);
                    #get analysis choices checkboxes and compute all analyses
 				   
@@ -1052,7 +1053,13 @@ server <- function( input, output, session ){
                      createScalarTopUI( input, output, session,
                                         basicAnalysis, stat_choices, id = "ui_stats_scalartop" );
                    }
-
+					#ac50 box chart
+                   if(any("ac50_box" %in% stat_choices)){
+                     
+                     progress$inc(1/n, detail = "Generating output for Burst Assay vs Not Burst Assay box chart.");
+                     createAc50BoxUI( input, output, session,
+                                        basicAnalysis, id = "ui_stats_Ac50box" );
+                   }
                    
                    #toxpi charts
                    if(any("toxpi" %in% stat_choices)){
@@ -1246,22 +1253,25 @@ server <- function( input, output, session ){
 				  if(input$radio_listtype == "casn"){
                    tmp = BERAnalysis$basicData$getHitlessChemInfoByCasn();
 				   if(length(tmp)>0){
-						showNotification(paste0(paste(tmp, collapse=", "),  " do not have any data for AC50 values."), type="warning", duration=length(tmp) + 5);
+						showNotification(paste0(paste(tmp, collapse=", "),  " do not have any data for Ac50 values."), type="warning", duration=length(tmp) + 5);
 				   
 				   }
                  } else if (input$radio_listtype == "name"){
                    tmp = BERAnalysis$basicData$getHitlessChemInfoByName();
 				   if(length(tmp)>0){
-						showNotification(paste0(paste(tmp, collapse=", "), " do not have any data for AC50 values."), type="warning", duration= length(tmp) + 5); #displaying this for 1 extra second per chemical
+						showNotification(paste0(paste(tmp, collapse=", "), " do not have any data for Ac50 values."), type="warning", duration= length(tmp) + 5); #displaying this for 1 extra second per chemical
 				   
 				   }
                  }
 				 
 				 
 				BERAnalysis$BERData$computeBER();
-                BERAnalysis$plotBER();  
-				BERAnalysis$plotBERvsAC50();
-                 progress$inc(1/n, detail = "Plotting BER results.");
+                BERAnalysis$computerMeanTableBER();  
+				
+                progress$inc(1/n, detail = "Plotting BER results.");
+				BERAnalysis$plotBERvsAc50(label_by = input$radio_listtype);
+				BERAnalysis$plotBER(label_by = input$radio_listtype);
+				 
                  createBERUI( input, output, session, BERAnalysis,
                             id = "ui_ber_plots" );
 

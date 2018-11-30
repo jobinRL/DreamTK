@@ -1,6 +1,6 @@
 # DreamTK App 
 
-#v0.7
+#v0.8
 
 # Preliminary loading -----------------------------------------------------
 source("./_setup_.R");
