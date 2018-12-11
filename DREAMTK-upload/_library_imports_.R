@@ -33,3 +33,4 @@ library(rintrojs);
 library(DT);
 library(FactoMineR);
 library(plotly);
+library(TRAMPR);
